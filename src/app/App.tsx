@@ -864,23 +864,7 @@ export const AppFC: FC<AppFCProps> = function AppFC(appProps) {
                     </Box>
                 )}
                 {!isAboutPage && (
-                    <Tooltip title={t('appBar.viewOnGitHub')}>
-                        <Button
-                            component="a"
-                            href="https://github.com/microsoft/data-formulator"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            sx={{ 
-                                minWidth: 'auto', 
-                                color: 'inherit',
-                                '&:hover': {
-                                    backgroundColor: 'rgba(0, 0, 0, 0.04)'
-                                }
-                            }}
-                        >
-                            <GitHubIcon fontSize="medium" />
-                        </Button>
-                    </Tooltip>
+                    <MessageSnackbar />
                 )}
             </Toolbar>
         </AppBar>
@@ -926,7 +910,6 @@ export const AppFC: FC<AppFCProps> = function AppFC(appProps) {
             }}>
                 {appBar}
                 <RouterProvider router={router} />
-                <MessageSnackbar />
             </Box>
         </Box>;
 

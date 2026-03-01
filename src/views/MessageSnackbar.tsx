@@ -100,6 +100,14 @@ export function MessageSnackbar() {
     );
 
 
+    const buttonSeverity: "error" | "warning" | "info" | "success" | "default" = React.useMemo(() => {
+        if (messages.length === 0) return "default";
+        if (messages.some(m => m.type === "error")) return "error";
+        if (messages.some(m => m.type === "warning")) return "warning";
+        if (messages.some(m => m.type === "info")) return "info";
+        return "success";
+    }, [messages]);
+
     const groupedMessages = [];
                             
     for (let i = 0; i < messages.length; i++) {
@@ -127,28 +135,23 @@ export function MessageSnackbar() {
     }
 
     return (
-        <Box sx={{ '& .snackbar-button': {
-            width: 36,
-            height: 36,
-            zIndex: 10,
-            backgroundColor: 'white',
-            '&:hover': {
-                transform: 'scale(1.1)',
-                backgroundColor: 'white',
-            },
-            border: '1px solid',
-            
-            boxShadow: '0 0 10px rgba(0,0,0,0.1)',
-            transition: 'all 0.3s ease'
-        }}}>
-            <Tooltip placement="left" title={t('messages.viewSystemMessages')}>
+        <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+            <Tooltip placement="bottom" title={t('messages.viewSystemMessages')}>
                 <IconButton 
-                    className='snackbar-button'
-                    color="warning"
-                    sx={{position: "absolute", bottom: 16, right: 16 }}
+                    color={buttonSeverity === "default" ? "inherit" : buttonSeverity}
+                    sx={{
+                        opacity: buttonSeverity === "default" ? 0.6 : 1,
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                            backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                        },
+                    }}
                     onClick={() => setOpenMessages(true)}
                 >
-                    <InfoIcon sx={{fontSize: 32}}/>
+                    {buttonSeverity === "error" ? <ErrorOutlineIcon fontSize="small"/> :
+                     buttonSeverity === "warning" ? <WarningIcon fontSize="small"/> :
+                     buttonSeverity === "success" ? <CheckCircleIcon fontSize="small"/> :
+                     <InfoIcon fontSize="small"/>}
                 </IconButton>
             </Tooltip>
             <Snackbar
