@@ -63,7 +63,7 @@ import CloudQueueIcon from '@mui/icons-material/CloudQueue';
 import InfoIcon from '@mui/icons-material/Info';
 import CasinoIcon from '@mui/icons-material/Casino';
 
-import { CHART_TEMPLATES, getChartTemplate } from '../components/ChartTemplates';
+import { CHART_TEMPLATES, getChartDisplayName, getChartTemplate } from '../components/ChartTemplates';
 
 import Prism from 'prismjs'
 import 'prismjs/components/prism-python' // Language
@@ -1022,28 +1022,28 @@ export const VisualizationViewFC: FC<VisPanelProps> = function VisualizationView
     if (!focusedChart || focusedChart?.chartType == "?") {
         let chartSelectionBox = <Box sx={{display: "flex", flexDirection: "row", width: '666px', flexWrap: "wrap"}}> 
             {Object.entries(CHART_TEMPLATES)
-                .flatMap(([cls, templates]) => templates.map((t, index) => ({ ...t, group: cls, index })))
-                .filter(t => t.chart != "Auto")
-                .map((t, globalIndex) =>
+                .flatMap(([cls, templates]) => templates.map((template, index) => ({ ...template, group: cls, index })))
+                .filter(template => template.chart != "Auto")
+                .map((template, globalIndex) =>
                 {
                     return <Button 
                         disabled={synthesisRunning}
-                        key={`${t.group}-${t.index}-${t.chart}-btn`}
+                        key={`${template.group}-${template.index}-${template.chart}-btn`}
                         sx={{margin: '2px', padding:'2px', display:'flex', flexDirection: 'column', 
                                 textTransform: 'none', justifyContent: 'flex-start'}}
                         onClick={() => { 
                             let focusedChart = allCharts.find(c => c.id == focusedChartId);
                             if (focusedChart?.chartType == "?") { 
-                                dispatch(dfActions.updateChartType({chartType: t.chart, chartId: focusedChartId as string}));
+                                dispatch(dfActions.updateChartType({chartType: template.chart, chartId: focusedChartId as string}));
                             } else {
-                                dispatch(dfActions.createNewChart({chartType: t.chart, tableId: focusedTableId as string}));
+                                dispatch(dfActions.createNewChart({chartType: template.chart, tableId: focusedTableId as string}));
                             }
                         }}
                     >
                         <Box sx={{opacity: synthesisRunning ? 0.5 : 1, width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center'}} >
-                            {typeof t?.icon == 'string' ? <img height="48px" width="48px" src={t?.icon} alt="" role="presentation" /> : t.icon}
+                            {typeof template?.icon == 'string' ? <img height="48px" width="48px" src={template?.icon} alt="" role="presentation" /> : template.icon}
                         </Box>
-                        <Typography sx={{marginLeft: "2px", whiteSpace: "initial", fontSize: '10px', width: '64px'}} >{t?.chart}</Typography>
+                        <Typography sx={{marginLeft: "2px", whiteSpace: "initial", fontSize: '10px', width: '64px'}} >{getChartDisplayName(template?.chart)}</Typography>
                     </Button>
                 }
             )}

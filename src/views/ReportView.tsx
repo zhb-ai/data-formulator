@@ -53,6 +53,7 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { convertToChartifact, openChartifactViewer } from './ChartifactDialog';
 import StreamIcon from '@mui/icons-material/Stream';
 import { useTranslation } from 'react-i18next';
+import { getChartDisplayName } from '../components/ChartTemplates';
 
 // Typography constants
 const FONT_FAMILY_SYSTEM = '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol"';
@@ -1025,7 +1026,7 @@ export const ReportView: FC = () => {
                                                 <Box
                                                     component="img"
                                                     src={previewImage!.url}
-                                                    alt={chart.chartType}
+                                                    alt={getChartDisplayName(chart.chartType)}
                                                     sx={{ p: 1, width: `calc(100% - 16px)`, height: 'auto', maxHeight: config.defaultChartHeight, display: 'block', objectFit: 'contain', backgroundColor: 'white' }}
                                                 />
                                             </Box>
@@ -1034,7 +1035,7 @@ export const ReportView: FC = () => {
                                                     variant="caption" 
                                                     sx={{ display: 'block', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                                                 >
-                                                    {chart.chartType}
+                                                    {getChartDisplayName(chart.chartType)}
                                                 </Typography>
                                                 {table?.displayId && (
                                                     <Typography 

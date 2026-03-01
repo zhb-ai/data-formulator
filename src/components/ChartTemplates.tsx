@@ -6,6 +6,7 @@ import InsightsIcon from '@mui/icons-material/Insights';
 import PublicIcon from '@mui/icons-material/Public';
 import PieChartOutlineIcon from '@mui/icons-material/PieChartOutline';
 import React from "react";
+import i18n from "../i18n";
 
 // Import all chart icons statically so they are included in the build
 import chartIconTable from '../assets/chart-icon-table-min.png';
@@ -116,6 +117,51 @@ export const ChannelGroups = {
         "facets": ["column", "row"],
         "data fields": ["field 1", "field 2", "field 3", "field 4", "field 5", 'field 6']
 }
+
+const CHART_TEMPLATE_NAME_KEYS: Record<string, string> = {
+    "Auto": "chart.templateNames.auto",
+    "Table": "chart.templateNames.table",
+    "Scatter Plot": "chart.templateNames.scatterPlot",
+    "Linear Regression": "chart.templateNames.linearRegression",
+    "Ranged Dot Plot": "chart.templateNames.rangedDotPlot",
+    "Boxplot": "chart.templateNames.boxplot",
+    "Bar Chart": "chart.templateNames.barChart",
+    "Pyramid Chart": "chart.templateNames.pyramidChart",
+    "Grouped Bar Chart": "chart.templateNames.groupedBarChart",
+    "Stacked Bar Chart": "chart.templateNames.stackedBarChart",
+    "Histogram": "chart.templateNames.histogram",
+    "Heatmap": "chart.templateNames.heatmap",
+    "US Map": "chart.templateNames.usMap",
+    "World Map": "chart.templateNames.worldMap",
+    "Pie Chart": "chart.templateNames.pieChart",
+    "Line Chart": "chart.templateNames.lineChart",
+    "Dotted Line Chart": "chart.templateNames.dottedLineChart",
+    "Custom Point": "chart.templateNames.customPoint",
+    "Custom Line": "chart.templateNames.customLine",
+    "Custom Bar": "chart.templateNames.customBar",
+    "Custom Rect": "chart.templateNames.customRect",
+    "Custom Area": "chart.templateNames.customArea"
+};
+
+const CHART_TEMPLATE_GROUP_KEYS: Record<string, string> = {
+    "table": "chart.templateGroups.table",
+    "scatter": "chart.templateGroups.scatter",
+    "bar": "chart.templateGroups.bar",
+    "map": "chart.templateGroups.map",
+    "pie": "chart.templateGroups.pie",
+    "line": "chart.templateGroups.line",
+    "custom": "chart.templateGroups.custom"
+};
+
+export const getChartDisplayName = (chartType: string): string => {
+    const key = CHART_TEMPLATE_NAME_KEYS[chartType];
+    return key ? i18n.t(key, { defaultValue: chartType }) : chartType;
+};
+
+export const getChartGroupDisplayName = (groupKey: string): string => {
+    const key = CHART_TEMPLATE_GROUP_KEYS[groupKey];
+    return key ? i18n.t(key, { defaultValue: groupKey }) : groupKey;
+};
 
 const tablePlots: ChartTemplate[] = [
     {

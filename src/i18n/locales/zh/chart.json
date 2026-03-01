@@ -31,6 +31,39 @@
     "msgEncodingEmpty": "把数据字段放入图表构建器，或描述你的需求！",
     "msgUnavailable": "请先整理数据再创建可视化！",
     "msgSynthesizing": "生成中...",
-    "msgWarning": "AI 生成结果可能不准确，请自行核查！"
+    "msgWarning": "AI 生成结果可能不准确，请自行核查！",
+    "templateGroups": {
+      "table": "表格",
+      "scatter": "散点",
+      "bar": "柱状",
+      "map": "地图",
+      "pie": "饼图",
+      "line": "折线",
+      "custom": "自定义"
+    },
+    "templateNames": {
+      "auto": "自动",
+      "table": "表格",
+      "scatterPlot": "散点图",
+      "linearRegression": "线性回归",
+      "rangedDotPlot": "区间点图",
+      "boxplot": "箱线图",
+      "barChart": "柱状图",
+      "pyramidChart": "金字塔图",
+      "groupedBarChart": "分组柱状图",
+      "stackedBarChart": "堆叠柱状图",
+      "histogram": "直方图",
+      "heatmap": "热力图",
+      "usMap": "美国地图",
+      "worldMap": "世界地图",
+      "pieChart": "饼图",
+      "lineChart": "折线图",
+      "dottedLineChart": "带点折线图",
+      "customPoint": "自定义点图",
+      "customLine": "自定义折线图",
+      "customBar": "自定义柱状图",
+      "customRect": "自定义矩形图",
+      "customArea": "自定义面积图"
+    }
   }
 }

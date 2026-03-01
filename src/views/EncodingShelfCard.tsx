@@ -48,7 +48,7 @@ import { createDictTable, DictTable } from "../components/ComponentType";
 import { getUrls, resolveChartFields, getTriggers, assembleVegaChart, resolveRecommendedChart } from '../app/utils';
 import { EncodingBox } from './EncodingBox';
 
-import { ChannelGroups, CHART_TEMPLATES, getChartChannels, getChartTemplate } from '../components/ChartTemplates';
+import { ChannelGroups, CHART_TEMPLATES, getChartChannels, getChartDisplayName, getChartGroupDisplayName, getChartTemplate } from '../components/ChartTemplates';
 import { checkChartAvailability, getDataTable } from './VisualizationView';
 import TableRowsIcon from '@mui/icons-material/TableRowsOutlined';
 import ChangeCircleOutlinedIcon from '@mui/icons-material/ChangeCircleOutlined';
@@ -1070,7 +1070,7 @@ export const EncodingShelfCard: FC<EncodingShelfCardProps> = function ({ chartId
                                         {typeof t?.icon == 'string' ? <img height="24px" width="24px" src={t?.icon} alt="" role="presentation" /> : 
                                          <Box sx={{width: "24px", height: "24px"}}>{t?.icon}</Box>}
                                         </ListItemIcon>
-                                    <ListItemText sx={{marginLeft: "2px", whiteSpace: "initial"}} slotProps={{primary: {fontSize: 12}}}>{t?.chart}</ListItemText>
+                                    <ListItemText sx={{marginLeft: "2px", whiteSpace: "initial"}} slotProps={{primary: {fontSize: 12}}}>{getChartDisplayName(t?.chart || "")}</ListItemText>
                                 </div>
                             )
                         }}
@@ -1082,7 +1082,7 @@ export const EncodingShelfCard: FC<EncodingShelfCardProps> = function ({ chartId
                                     lineHeight: 2, 
                                     fontSize: 12,
                                     gridColumn: '1 / -1' // Make subheader span both columns
-                                }} key={group}>{group}</ListSubheader>,
+                                }} key={group}>{getChartGroupDisplayName(group)}</ListSubheader>,
                                 ...templates.map((t, i) => (
                                     <MenuItem 
                                         sx={{ 
@@ -1111,7 +1111,7 @@ export const EncodingShelfCard: FC<EncodingShelfCardProps> = function ({ chartId
                                                 slotProps={{primary: {fontSize: 11}}} 
                                                 sx={{ margin: 0 }}
                                             >
-                                                {t.chart}
+                                                {getChartDisplayName(t.chart)}
                                             </ListItemText>
                                         </Box>
                                     </MenuItem>
