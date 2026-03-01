@@ -944,11 +944,11 @@ export const UnifiedDataUploadDialog: React.FC<UnifiedDataUploadDialogProps> = (
             'explore': t('upload.sampleDatasets'),
             'upload': t('upload.uploadFile'),
             'paste': t('upload.pasteData'),
-            'extract': 'Extract from Documents',
+            'extract': t('upload.extractData'),
             'url': t('upload.loadFromUrl'),
             'database': t('upload.database'),
         };
-        return tabTitles[activeTab] || 'Add Data';
+        return tabTitles[activeTab] || t('upload.title');
     };
 
     return (
@@ -1382,7 +1382,7 @@ export const UnifiedDataUploadDialog: React.FC<UnifiedDataUploadDialogProps> = (
                                     onClick={toggleFullContent}
                                     sx={{ textTransform: 'none', minWidth: 'auto' }}
                                 >
-                                    {showFullContent ? 'Show Preview' : 'Show Full'}
+                                    {showFullContent ? t('upload.showPreview') : t('upload.showFull')}
                                 </Button>
                             </Box>
                         )}
@@ -1426,7 +1426,7 @@ export const UnifiedDataUploadDialog: React.FC<UnifiedDataUploadDialogProps> = (
                                     border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`
                                 }}>
                                     <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                                        Preview mode: Editing disabled. Click "Show Full" to enable editing.
+                                        {t('upload:previewMode')}
                                     </Typography>
                                 </Box>
                             )}
@@ -1439,7 +1439,7 @@ export const UnifiedDataUploadDialog: React.FC<UnifiedDataUploadDialogProps> = (
                                 disabled={(pasteContent || '').trim() === '' || isOverSizeLimit}
                                 sx={{ textTransform: 'none' }}
                             >
-                                Upload Data
+                                {t('upload.uploadData')}
                             </Button>
                         </Box>
                     </Box>

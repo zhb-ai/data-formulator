@@ -38,6 +38,9 @@
     "randomRowsTooltip": "view 10000 random rows from this table",
     "close": "Close",
     "autoSortFailed": "unable to perform auto-sort.",
-    "autoSortServerFailed": "unable to perform auto-sort due to server issue."
+    "autoSortServerFailed": "unable to perform auto-sort due to server issue.",
+    "removeTable": "Remove table",
+    "preview": "Preview",
+    "noTablesToPreview": "No tables to preview."
   }
 }

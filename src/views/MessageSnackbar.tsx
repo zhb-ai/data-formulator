@@ -138,20 +138,27 @@ export function MessageSnackbar() {
         <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
             <Tooltip placement="bottom" title={t('messages.viewSystemMessages')}>
                 <IconButton 
-                    color={buttonSeverity === "default" ? "inherit" : buttonSeverity}
+                    color={buttonSeverity === "default" ? "default" : buttonSeverity}
                     sx={{
+                        width: 32,
+                        height: 32,
+                        backgroundColor: 'white',
+                        border: '1px solid',
+                        borderColor: buttonSeverity === "default" ? 'grey.400' : `${buttonSeverity}.main`,
+                        boxShadow: '0 0 6px rgba(0,0,0,0.1)',
                         opacity: buttonSeverity === "default" ? 0.6 : 1,
                         transition: 'all 0.3s ease',
                         '&:hover': {
-                            backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                            transform: 'scale(1.1)',
+                            backgroundColor: 'white',
                         },
                     }}
                     onClick={() => setOpenMessages(true)}
                 >
-                    {buttonSeverity === "error" ? <ErrorOutlineIcon fontSize="small"/> :
-                     buttonSeverity === "warning" ? <WarningIcon fontSize="small"/> :
-                     buttonSeverity === "success" ? <CheckCircleIcon fontSize="small"/> :
-                     <InfoIcon fontSize="small"/>}
+                    {buttonSeverity === "error" ? <ErrorOutlineIcon sx={{fontSize: 22}}/> :
+                     buttonSeverity === "warning" ? <WarningIcon sx={{fontSize: 22}}/> :
+                     buttonSeverity === "success" ? <CheckCircleIcon sx={{fontSize: 22}}/> :
+                     <InfoIcon sx={{fontSize: 22}}/>}
                 </IconButton>
             </Tooltip>
             <Snackbar

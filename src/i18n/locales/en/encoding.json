@@ -27,6 +27,20 @@
     "fieldPlaceholder": "field",
     "newFieldNamePlaceholder": "type a new field name",
     "createNewFieldGroup": "create a new field",
-    "axisSettings": "axis settings"
+    "axisSettings": "axis settings",
+    "legends": "legends",
+    "facets": "facets",
+    "dataFields": "data fields",
+    "editor": "Editor",
+    "ideas": "Ideas",
+    "getIdeas": "Get Ideas",
+    "getIdeasQuestion": "Get Ideas?",
+    "differentIdeas": "Different ideas?",
+    "formulateData": "formulate data",
+    "ideating": "ideating...",
+    "formulateAndOverride": "formulate and override",
+    "formulate": "Formulate",
+    "whatDoYouWantToVisualize": "what do you want to visualize?",
+    "getIdeasForVisualization": "get ideas for visualization"
   }
 }

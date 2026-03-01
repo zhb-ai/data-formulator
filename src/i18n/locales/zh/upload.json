@@ -29,6 +29,10 @@
     "refreshInterval": "刷新间隔",
     "seconds": "秒",
     "liveData": "实时数据",
-    "from": "来自"
+    "from": "来自",
+    "previewMode": "预览模式：编辑已禁用。点击\"显示完整\"以启用编辑。",
+    "showPreview": "显示预览",
+    "showFull": "显示完整",
+    "uploadData": "上传数据"
   }
 }

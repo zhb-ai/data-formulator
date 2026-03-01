@@ -29,6 +29,10 @@
     "refreshInterval": "Refresh interval",
     "seconds": "seconds",
     "liveData": "Live data",
-    "from": "from"
+    "from": "from",
+    "previewMode": "Preview mode: Editing disabled. Click \"Show Full\" to enable editing.",
+    "showPreview": "Show Preview",
+    "showFull": "Show Full",
+    "uploadData": "Upload Data"
   }
 }

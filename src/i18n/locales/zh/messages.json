@@ -38,6 +38,9 @@
     "randomRowsTooltip": "查看该表的 10000 条随机行",
     "close": "关闭",
     "autoSortFailed": "无法执行智能排序。",
-    "autoSortServerFailed": "由于服务器问题，无法执行智能排序。"
+    "autoSortServerFailed": "由于服务器问题，无法执行智能排序。",
+    "removeTable": "移除表格",
+    "preview": "预览",
+    "noTablesToPreview": "没有可预览的表格。"
   }
 }

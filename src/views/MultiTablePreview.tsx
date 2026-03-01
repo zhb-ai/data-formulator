@@ -3,6 +3,7 @@
 
 import * as React from 'react';
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     Box,
     Chip,
@@ -51,7 +52,7 @@ export const MultiTablePreview: React.FC<MultiTablePreviewProps> = ({
     error = null,
     table,
     tables,
-    emptyLabel = 'No tables to preview.',
+    emptyLabel,
     meta,
     onRemoveTable,
     activeIndex: controlledActiveIndex,
@@ -60,6 +61,7 @@ export const MultiTablePreview: React.FC<MultiTablePreviewProps> = ({
     maxRows = 12,
     compact = true,
 }) => {
+    const { t } = useTranslation('messages');
     const previewTables = tables ?? (table ? [table] : null);
     const [internalActiveIndex, setInternalActiveIndex] = useState(0);
     const activeIndex = controlledActiveIndex !== undefined ? controlledActiveIndex : internalActiveIndex;
@@ -106,7 +108,7 @@ export const MultiTablePreview: React.FC<MultiTablePreviewProps> = ({
 
             {!loading && !error && (!previewTables || previewTables.length === 0) && (
                 <Typography variant="caption" color="text.secondary">
-                    {emptyLabel}
+                    {emptyLabel || t('messages:noTablesToPreview')}
                 </Typography>
             )}
 
@@ -124,7 +126,7 @@ export const MultiTablePreview: React.FC<MultiTablePreviewProps> = ({
                         }}
                     >
                         <Typography variant="caption" sx={{ mx: 0.5 }}>
-                            Preview
+                            {t('messages:preview')}
                         </Typography>
                         {previewTables.map((t, idx) => {
                             const label = t.displayId || t.id;
@@ -176,13 +178,13 @@ export const MultiTablePreview: React.FC<MultiTablePreviewProps> = ({
                             );
                         })}
                         {onRemoveTable && (
-                            <Tooltip title="Remove table" placement="top" arrow>    
+                            <Tooltip title={t('messages:removeTable')} placement="top" arrow>
                                 <IconButton
                                     size="small"
                                     color="error"
                                     onClick={() => onRemoveTable(activeIndex)}
                                     sx={{ ml: 'auto', flexShrink: 0 }}
-                                    aria-label="Remove table"
+                                    aria-label={t('messages:removeTable')}
                                 >
                                     <DeleteIcon fontSize="small" />
                                 </IconButton>

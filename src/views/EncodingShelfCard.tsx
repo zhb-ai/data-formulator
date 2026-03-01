@@ -64,6 +64,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
 import TipsAndUpdatesIcon from '@mui/icons-material/TipsAndUpdates';
 import { IdeaChip } from './ChartRecBox';
+import { useTranslation } from 'react-i18next';
 
 // Property and state of an encoding shelf
 export interface EncodingShelfCardProps { 
@@ -252,6 +253,7 @@ export const TriggerCard: FC<{
 
 export const EncodingShelfCard: FC<EncodingShelfCardProps> = function ({ chartId }) {
     const theme = useTheme();
+    const { t } = useTranslation('encoding');
 
     // reference to states
     const tables = useSelector((state: DataFormulatorState) => state.tables);
@@ -330,12 +332,20 @@ export const EncodingShelfCard: FC<EncodingShelfCardProps> = function ({ chartId
         }));
     };
     
+    // Map channel group keys to translation keys
+    const getGroupTranslationKey = (group: string): string => {
+        if (group === 'legends') return t('encoding:legends');
+        if (group === 'facets') return t('encoding:facets');
+        if (group === 'data fields') return t('encoding:dataFields');
+        return group;
+    };
+
     let encodingBoxGroups = Object.entries(ChannelGroups)
         .filter(([group, channelList]) => channelList.some(ch => Object.keys(encodingMap).includes(ch)))
         .map(([group, channelList]) => {
 
             let component = <Box key={`encoding-group-box-${group}`}>
-                <Typography key={`encoding-group-${group}`} sx={{ fontSize: 10, color: "text.secondary", marginTop: "6px", marginBottom: "2px" }}>{group}</Typography>
+                <Typography key={`encoding-group-${group}`} sx={{ fontSize: 10, color: "text.secondary", marginTop: "6px", marginBottom: "2px" }}>{getGroupTranslationKey(group)}</Typography>
                 {channelList.filter(channel => Object.keys(encodingMap).includes(channel))
                     .map(channel => <EncodingBox key={`shelf-${channel}`} channel={channel as Channel} chartId={chartId} tableId={currentTable.id} />)}
             </Box>
@@ -872,8 +882,8 @@ export const EncodingShelfCard: FC<EncodingShelfCardProps> = function ({ chartId
             value={prompt}
             label=""
             placeholder={['Auto'].includes(chart.chartType) 
-                ? (isChartAvailable ? "what do you want to visualize?" : " ✏️ what do you want to visualize?")
-                : (isChartAvailable ? "formulate data" : " ✏️  formulate data")}
+                ? (isChartAvailable ? t('encoding:whatDoYouWantToVisualize') : ` ✏️ ${t('encoding:whatDoYouWantToVisualize')}`)
+                : (isChartAvailable ? t('encoding:formulateData') : ` ✏️  ${t('encoding:formulateData')}`)}
             fullWidth
             multiline
             variant="standard"
@@ -883,7 +893,7 @@ export const EncodingShelfCard: FC<EncodingShelfCardProps> = function ({ chartId
         />
         {trigger ? 
             <Box sx={{display: 'flex'}}>
-                <Tooltip title={<Typography sx={{fontSize: 11}}>formulate and override <TableRowsIcon sx={{fontSize: 10, marginBottom: '-1px'}}/>{trigger.resultTableId}</Typography>}>
+                <Tooltip title={<Typography sx={{fontSize: 11}}>{t('encoding:formulateAndOverride')} <TableRowsIcon sx={{fontSize: 10, marginBottom: '-1px'}}/>{trigger.resultTableId}</Typography>}>
                     <span>
                         <IconButton sx={{ marginLeft: "0"}} size="small"
                              color={"warning"} onClick={() => { 
@@ -895,7 +905,7 @@ export const EncodingShelfCard: FC<EncodingShelfCardProps> = function ({ chartId
                 </Tooltip>
             </Box>
             : 
-            <Tooltip title={`Formulate`}>
+            <Tooltip title={t('encoding:formulate')}>
                 <span>
                     <IconButton sx={{ marginLeft: "0"}} 
                          color={"primary"} onClick={() => { deriveNewData(prompt, 'formulate'); }}>
@@ -981,7 +991,7 @@ export const EncodingShelfCard: FC<EncodingShelfCardProps> = function ({ chartId
                     }
                 }}
             >
-                {currentChartIdeas.length > 0 ? "Ideas" : "Get Ideas"}
+                {currentChartIdeas.length > 0 ? t('encoding:ideas') : t('encoding:getIdeas')}
                 <LightbulbOutlinedIcon 
                     sx={{
                         fontSize: 12, 
@@ -1014,7 +1024,7 @@ export const EncodingShelfCard: FC<EncodingShelfCardProps> = function ({ chartId
                 }}
                 onClick={() => setIdeateMode(false)}
             >
-                Editor
+                {t('encoding:editor')}
             </Typography>
         </Box>
     );
@@ -1128,7 +1138,7 @@ export const EncodingShelfCard: FC<EncodingShelfCardProps> = function ({ chartId
             <ModeToggleHeader />
             {ideateMode ? (
                 <Box sx={{ padding: 1 }}>
-                    <Tooltip title={`get ideas for visualization`}>
+                    <Tooltip title={t('encoding:getIdeasForVisualization')}>
                         <span>
                             <Button 
                                 variant="text"
@@ -1142,7 +1152,7 @@ export const EncodingShelfCard: FC<EncodingShelfCardProps> = function ({ chartId
                                     textTransform: 'none',
                                 }}
                             >
-                                {isLoadingIdeas ? ThinkingBanner('ideating...') : currentChartIdeas.length > 0 ? "Different ideas?" : "Get Ideas?"} 
+                                {isLoadingIdeas ? ThinkingBanner(t('encoding:ideating')) : currentChartIdeas.length > 0 ? t('encoding:differentIdeas') : t('encoding:getIdeasQuestion')} 
                             </Button>
                         </span>
                     </Tooltip>
