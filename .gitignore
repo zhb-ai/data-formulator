@@ -335,6 +335,30 @@ paket-files/
 # Python Tools for Visual Studio (PTVS)
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+develop-eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg-info/PKG-INFO
+*.egg-info/SOURCES.txt
+*.egg-info/dependency_links.txt
+*.egg-info/entry_points.txt
+*.egg-info/requires.txt
+*.egg-info/top_level.txt
 
 # Cake - Uncomment if you are using it
 # tools/**

@@ -34,6 +34,8 @@ tables_bp = Blueprint('tables', __name__, url_prefix='/api/tables')
 def list_tables():
     """List all tables in the current session"""
     try:
+        sid = session.get('session_id', 'NO_SESSION')
+        logger.info(f"[DEBUG] list-tables called with session_id={sid}")
         result = []
         with db_manager.connection(session['session_id']) as db:
             table_metadata_list = db.execute("""
@@ -286,6 +288,9 @@ def get_table_data():
 def create_table():
     """Create a new table from uploaded data"""
     try:
+        sid = session.get('session_id', 'NO_SESSION')
+        logger.info(f"[DEBUG] create-table called with session_id={sid}, table_name={request.form.get('table_name')}")
+
         if 'file' not in request.files and 'raw_data' not in request.form:
             return jsonify({"status": "error", "message": "No file or raw data provided"}), 400
         
@@ -351,7 +356,124 @@ def create_table():
             "status": "error",
             "message": safe_msg
         }), status_code
+def _load_df_from_request():
+    """Parse upload payload and return (table_name, dataframe, error_response)."""
+    if 'file' not in request.files and 'raw_data' not in request.form:
+        return None, None, (jsonify({"status": "error", "message": "No file or raw data provided"}), 400)
 
+    table_name = request.form.get('table_name')
+    if not table_name:
+        return None, None, (jsonify({"status": "error", "message": "No table name provided"}), 400)
+
+    df = None
+    if 'file' in request.files:
+        file = request.files['file']
+        if file.filename.endswith('.csv'):
+            df = pd.read_csv(file)
+        elif file.filename.endswith(('.xlsx', '.xls')):
+            df = pd.read_excel(file)
+        elif file.filename.endswith('.json'):
+            df = pd.read_json(file)
+        else:
+            return None, None, (jsonify({"status": "error", "message": "Unsupported file format"}), 400)
+    else:
+        raw_data = request.form.get('raw_data')
+        try:
+            df = pd.DataFrame(json.loads(raw_data))
+        except Exception as e:
+            return None, None, (jsonify({
+                "status": "error",
+                "message": f"Invalid JSON data: {str(e)}, it must be in the format of a list of dictionaries"
+            }), 400)
+
+    if df is None:
+        return None, None, (jsonify({"status": "error", "message": "No data provided"}), 400)
+
+    return table_name, df, None
+
+
+def _append_into_table(db, sanitized_table_name: str, df: pd.DataFrame):
+    """Append DataFrame rows into an existing table by matching column names."""
+    db.register('df_temp', df)
+    try:
+        db.execute(f"INSERT INTO {sanitized_table_name} BY NAME SELECT * FROM df_temp")
+    finally:
+        db.execute("DROP VIEW IF EXISTS df_temp")
+
+
+@tables_bp.route('/append-table', methods=['POST'])
+def append_table():
+    """Append rows to a table; create the table when it does not exist."""
+    try:
+        sid = session.get('session_id', 'NO_SESSION')
+        logger.info(f"[DEBUG] append-table called with session_id={sid}, table_name={request.form.get('table_name')}")
+
+        table_name, df, error_response = _load_df_from_request()
+        if error_response:
+            return error_response
+
+        sanitized_table_name = sanitize_table_name(table_name)
+        with db_manager.connection(session['session_id']) as db:
+            exists = db.execute(
+                f"SELECT COUNT(*) FROM duckdb_tables() WHERE table_name = '{sanitized_table_name}'"
+            ).fetchone()[0] > 0
+
+            if exists:
+                _append_into_table(db, sanitized_table_name, df)
+            else:
+                db.register('df_temp', df)
+                try:
+                    db.execute(f"CREATE TABLE {sanitized_table_name} AS SELECT * FROM df_temp")
+                finally:
+                    db.execute("DROP VIEW IF EXISTS df_temp")
+
+            total_row_count = db.execute(f"SELECT COUNT(*) FROM {sanitized_table_name}").fetchone()[0]
+            return jsonify({
+                "status": "success",
+                "table_name": sanitized_table_name,
+                "appended_row_count": len(df),
+                "total_row_count": total_row_count,
+                "created": not exists,
+            })
+    except Exception as e:
+        logger.error(f"Error appending table: {str(e)}")
+        safe_msg, status_code = sanitize_db_error_message(e)
+        return jsonify({
+            "status": "error",
+            "message": safe_msg
+        }), status_code
+
+
+@tables_bp.route('/stream-ingest', methods=['POST'])
+def stream_ingest():
+    """Chunked ingest endpoint for streaming clients."""
+    try:
+        chunk_index = request.form.get('chunk_index')
+        is_final_raw = (request.form.get('is_final') or '').strip().lower()
+        is_final = is_final_raw in ('1', 'true', 'yes')
+
+        resp = append_table()
+        if isinstance(resp, tuple):
+            body, status = resp
+            if status != 200:
+                return resp
+            payload = body.get_json()
+        else:
+            payload = resp.get_json()
+            status = 200
+
+        payload.update({
+            "chunk_index": int(chunk_index) if chunk_index and chunk_index.isdigit() else None,
+            "is_final": is_final,
+        })
+        return jsonify(payload), status
+    except Exception as e:
+        logger.error(f"Error in stream-ingest: {str(e)}")
+        safe_msg, status_code = sanitize_db_error_message(e)
+        return jsonify({
+            "status": "error",
+            "message": safe_msg
+        }), status_code
 
 
 @tables_bp.route('/delete-table', methods=['POST'])

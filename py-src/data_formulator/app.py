@@ -194,15 +194,18 @@ def get_session_id():
         })
     else:
         # When database is enabled, use Flask sessions (cookies) as before
+        old_session_id = session.get('session_id', None)
         if current_session_id is None:    
             if 'session_id' not in session:
                 session['session_id'] = secrets.token_hex(16)
                 session.permanent = True
                 logger.info(f"Created new session: {session['session_id']}")
+            else:
+                logger.info(f"Reusing existing session: {session['session_id']}")
         else:
-            # override the session_id
             session['session_id'] = current_session_id
-            session.permanent = True 
+            session.permanent = True
+            logger.info(f"Session override: {old_session_id} → {current_session_id}")
         
         return flask.jsonify({
             "status": "ok",
