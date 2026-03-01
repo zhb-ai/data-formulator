@@ -1,6 +1,7 @@
 
 *env
-*api-keys.env
+!api-keys.env
+!api-keys-example.env
 **/*.ipynb_checkpoints/
 .DS_Store
 build/
