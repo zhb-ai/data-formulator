@@ -78,7 +78,7 @@ pip install "litellm[proxy]"
 $env:QWEN_API_KEY="<你的QwenKey>"
 $env:QWEN_API_BASE="http://<你的vllm地址>:8000/v1"
 $env:DEEPSEEK_API_KEY="<你的DeepSeekKey>"
-$env:LITELLM_MASTER_KEY="sk-litellm-master-local"
+$env:LITELLM_MASTER_KEY="sk-litellm-master-key-2024"
 
 # 使用 runtime 配置，避免 Windows 下可能的编码问题
 litellm --config "config\litellm_config.runtime.yaml" --host 127.0.0.1 --port 4000
@@ -97,17 +97,66 @@ Invoke-WebRequest http://127.0.0.1:4000/health -UseBasicParsing
 - 快速验证：可先使用 `LITELLM_MASTER_KEY`，方便快速联通
 - 正式使用：改为 LiteLLM 生成的 `virtual/internal key`（最小权限，推荐）
 
+#### 方式 A：`api-keys.env` 文件（推荐，一劳永逸）
+
+在 `data-formulator/api-keys.env` 中写入配置，DF 启动时会自动加载，无需每次手动设环境变量。
+
+```ini
+# data-formulator/api-keys.env
+OPENAI_ENABLED=true
+OPENAI_API_KEY=sk-litellm-master-key-2024
+OPENAI_API_BASE=http://127.0.0.1:4000/v1
+OPENAI_MODELS=qwen3-14b,deepseek-chat
+```
+
+> **自动加载原理**：DF 的 `app.py` 启动时会依次加载：
+> 1. `data-formulator/api-keys.env`（即 `APP_ROOT/../../api-keys.env`）
+> 2. `data-formulator/py-src/data_formulator/api-keys.env`
+> 3. `data-formulator/py-src/data_formulator/.env`
+>
+> 只需在第 1 个路径放文件即可。**不要把此文件提交到 Git**（已在 `.gitignore` 模板中）。
+
+配置好后，直接启动即可：
+
+```powershell
+cd $WORKSPACE\data-formulator
+conda activate data-formulator
+python -m data_formulator --port 5000
+```
+
+#### 方式 B：手动设环境变量
+
+如果不想创建文件，也可以在每次启动前手动设置。
+
+**PowerShell 版本：**
+
 ```powershell
 cd $WORKSPACE\data-formulator
 conda activate data-formulator
 
 $env:OPENAI_ENABLED="true"
-$env:OPENAI_API_KEY="sk-litellm-master-local"
+$env:OPENAI_API_KEY="sk-litellm-master-key-2024"
 $env:OPENAI_API_BASE="http://127.0.0.1:4000/v1"
 $env:OPENAI_MODELS="qwen3-14b,deepseek-chat"
 
 python -m data_formulator --port 5000
 ```
+
+**CMD 版本（注意 `set` 等号前后不能有空格）：**
+
+```cmd
+cd /d %WORKSPACE%\data-formulator
+conda activate data-formulator
+
+set OPENAI_ENABLED=true
+set OPENAI_API_KEY=sk-litellm-master-key-2024
+set OPENAI_API_BASE=http://127.0.0.1:4000/v1
+set OPENAI_MODELS=qwen3-14b,deepseek-chat
+
+python -m data_formulator --port 5000
+```
+
+> **CMD vs PowerShell**：Conda 激活后默认进入 cmd.exe，此时 `$env:` 语法不可用，必须用 `set`。
 
 访问：
 
@@ -126,7 +175,7 @@ SUPERSET_URL=http://localhost:8088
 DF_URL=http://127.0.0.1:5000
 
 # Gateway AI 走 LiteLLM（可选但推荐）
-LLM_API_KEY=sk-litellm-master-local
+LLM_API_KEY=sk-litellm-master-key-2024
 LLM_BASE_URL=http://127.0.0.1:4000/v1
 LLM_MODEL=qwen3-14b
 ```
@@ -159,7 +208,44 @@ npm run dev
 
 ## 6. 常见问题
 
-### 6.1 Windows 下 LiteLLM 编码报错
+### 6.1 DF 打开后模型列表为空
+
+DF 前端启动时会调用 `/api/agent/check-available-models` 自动检测可用模型。如果模型列表为空，按以下步骤排查：
+
+**① 检查 LiteLLM 是否正常运行**
+
+```powershell
+# 端口是否在监听
+netstat -ano | findstr :4000 | findstr LISTENING
+
+# 模型列表是否正常返回（注意使用正确的 master key）
+Invoke-WebRequest -Uri "http://127.0.0.1:4000/v1/models" `
+  -Headers @{Authorization="Bearer sk-litellm-master-key-2024"} `
+  -UseBasicParsing | Select-Object -ExpandProperty Content
+```
+
+如果返回 `"No connected db."`，说明 token 不对，请核对 `LITELLM_MASTER_KEY`。
+
+**② 检查 DF 是否加载了环境变量**
+
+```powershell
+Invoke-WebRequest -Uri "http://127.0.0.1:5000/api/agent/check-available-models" `
+  -Method POST -Body '{"token":1}' -ContentType "application/json" `
+  -UseBasicParsing | Select-Object -ExpandProperty Content
+```
+
+- 返回 `[]`：DF 没有读到 `OPENAI_ENABLED` 等环境变量，请确认 `api-keys.env` 文件存在并**重启 DF**。
+- 返回包含模型的 JSON 数组：配置正确，刷新浏览器页面即可。
+
+**③ 常见错误原因**
+
+| 现象 | 原因 |
+|------|------|
+| CMD 中 `$env:OPENAI_ENABLED = "true"` 报错 | Conda 激活后是 cmd.exe，应使用 `set OPENAI_ENABLED=true` |
+| `set` 命令设了变量但 DF 还是返回 `[]` | 可能 DF 在另一个终端启动，env 不共享；推荐用 `api-keys.env` 文件 |
+| LiteLLM 返回 `No connected db.` | `OPENAI_API_KEY` 与 `LITELLM_MASTER_KEY` 不一致 |
+
+### 6.2 Windows 下 LiteLLM 编码报错
 
 若出现 `UnicodeDecodeError (gbk)`，请使用：
 
@@ -167,7 +253,7 @@ npm run dev
 
 不要用含非 ASCII 内容的配置文件。
 
-### 6.2 端口冲突
+### 6.3 端口冲突
 
 ```powershell
 netstat -ano | findstr :5000
@@ -176,7 +262,7 @@ netstat -ano | findstr :4000
 
 然后更换端口或结束冲突进程。
 
-### 6.3 LiteLLM 只允许本机访问
+### 6.4 LiteLLM 只允许本机访问
 
 保持：
 
@@ -199,8 +285,8 @@ netstat -ano | findstr :4000
 
 1. `data-formulator` 建 Conda 环境 + `pip install -e .`
 2. 启动 LiteLLM：`127.0.0.1:4000`
-3. 设置 DF 的 `OPENAI_API_BASE=http://127.0.0.1:4000/v1`
+3. 创建 `data-formulator/api-keys.env`（内容见 4.2 方式 A）
 4. `python -m data_formulator --port 5000`
-5. 浏览器打开 `http://127.0.0.1:5000`
+5. 浏览器打开 `http://127.0.0.1:5000`，模型应自动出现在列表中
 
 以上流程即可在 **不使用 Docker** 的前提下稳定运行 DF，并保留 AI 密钥隔离能力。
