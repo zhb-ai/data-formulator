@@ -219,6 +219,11 @@ export const DataLoadingInputBox = React.forwardRef<(() => void) | null, {maxLin
     const [userImages, setUserImages] = useState<string[]>([]);
     const [prompt, setPrompt] = useState('');
 
+    const isLikelyTextOnlyModel = React.useMemo(() => {
+        const modelName = (activeModel?.model || '').toLowerCase();
+        return modelName.includes('deepseek-chat');
+    }, [activeModel]);
+
     const existOutputBlocks = dataCleanBlocks.length > 0;
 
     // Reconstruct dialog from Redux state for API compatibility
@@ -382,6 +387,15 @@ Revenue in More Personal Computing was $13.5 billion and increased 9%, with the 
         const hasImageData = imagesToUse.length > 0 || additionalImages.length > 0;
         if (!hasPrompt && !hasImageData) return;
         if (cleanInProgress) return;
+
+        if (hasImageData && isLikelyTextOnlyModel) {
+            dispatch(dfActions.addMessages({
+                timestamp: Date.now(),
+                type: 'warning',
+                component: 'data loader',
+                value: 'Current model may not support image input. We will continue with text-only analysis if needed.',
+            }));
+        }
         
         dispatch(dfActions.setCleanInProgress(true));
         const token = String(Date.now());
