@@ -229,7 +229,14 @@ export const RefreshDataDialog: React.FC<RefreshDataDialogProps> = ({
         }
 
         setIsLoading(true);
-        fetch(urlContent)
+
+        // Determine if this is an external URL (cross-origin)
+        const isExternalUrl = urlContent.startsWith('http') && !urlContent.startsWith(window.location.origin);
+
+        // Use credentials: 'omit' for external URLs to avoid CORS issues
+        const fetchOptions: RequestInit = isExternalUrl ? { credentials: 'omit' } : {};
+
+        fetch(urlContent, fetchOptions)
             .then(res => res.text())
             .then(content => {
                 let newRows: any[] = [];

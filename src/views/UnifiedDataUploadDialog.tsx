@@ -813,7 +813,13 @@ export const UnifiedDataUploadDialog: React.FC<UnifiedDataUploadDialogProps> = (
         const baseName = parts[parts.length - 1]?.split('?')[0] || 'dataset';
         const tableName = getUniqueTableName(baseName.replace(/\.[^.]+$/, ''), existingNames);
 
-        fetch(fullUrl)
+        // Determine if this is an external URL (cross-origin)
+        const isExternalUrl = fullUrl.startsWith('http') && !fullUrl.startsWith(window.location.origin);
+
+        // Use credentials: 'omit' for external URLs to avoid CORS issues
+        const fetchOptions: RequestInit = isExternalUrl ? { credentials: 'omit' } : {};
+
+        fetch(fullUrl, fetchOptions)
             .then(res => {
                 if (!res.ok) {
                     throw new Error(`HTTP ${res.status}: ${res.statusText}`);
@@ -1476,22 +1482,33 @@ export const UnifiedDataUploadDialog: React.FC<UnifiedDataUploadDialogProps> = (
                 {/* Explore Sample Datasets Tab */}
                 <TabPanel value={activeTab} index="explore">
                     <Box sx={{ p: 2, height: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
-                        <DatasetSelectionView 
-                        datasets={datasetPreviews} 
+                        <DatasetSelectionView
+                        datasets={datasetPreviews}
                         hideRowNum
                         handleSelectDataset={(dataset) => {
                             // Check if this is a live dataset
                             const isLiveDataset = dataset.live === true;
-                            
+
                             for (let table of dataset.tables) {
                                 // For live datasets with relative URLs, construct full URL
                                 let fullUrl = table.url;
                                 if (table.url.startsWith('/')) {
                                     fullUrl = window.location.origin + table.url;
                                 }
-                                
-                                fetch(fullUrl)
-                                    .then(res => res.text())
+
+                                // Determine if this is an external URL (cross-origin)
+                                const isExternalUrl = fullUrl.startsWith('http') && !fullUrl.startsWith(window.location.origin);
+
+                                // Use credentials: 'omit' for external URLs to avoid CORS issues
+                                const fetchOptions: RequestInit = isExternalUrl ? { credentials: 'omit' } : {};
+
+                                fetch(fullUrl, fetchOptions)
+                                    .then(res => {
+                                        if (!res.ok) {
+                                            throw new Error(`Failed to fetch ${table.url}: ${res.status} ${res.statusText}`);
+                                        }
+                                        return res.text();
+                                    })
                                     .then(textData => {
                                         let tableName = table.url.split("/").pop()?.split(".")[0]?.split("?")[0] || 'table-' + Date.now().toString().substring(0, 8);
                                         let dictTable;
@@ -1499,12 +1516,12 @@ export const UnifiedDataUploadDialog: React.FC<UnifiedDataUploadDialogProps> = (
                                             dictTable = createTableFromText(tableName, textData);
                                         } else if (table.format == "json") {
                                             dictTable = createTableFromFromObjectArray(tableName, JSON.parse(textData), true);
-                                        } 
+                                        }
                                         if (dictTable) {
                                             // For live datasets, set up as stream source with auto-refresh
                                             if (isLiveDataset) {
-                                                dictTable.source = { 
-                                                    type: 'stream', 
+                                                dictTable.source = {
+                                                    type: 'stream',
                                                     url: fullUrl,
                                                     autoRefresh: true,
                                                     refreshIntervalSeconds: dataset.refreshIntervalSeconds || 60,
@@ -1517,6 +1534,15 @@ export const UnifiedDataUploadDialog: React.FC<UnifiedDataUploadDialogProps> = (
                                             dispatch(dfActions.loadTable(dictTable));
                                             dispatch(fetchFieldSemanticType(dictTable));
                                         }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error loading dataset:', error);
+                                        dispatch(dfActions.addMessages({
+                                            timestamp: Date.now(),
+                                            type: 'error',
+                                            component: 'data loader',
+                                            value: `Failed to load dataset "${table.url}": ${error.message}`
+                                        }));
                                     });
                             }
                             handleClose();

@@ -39,7 +39,13 @@ export function useDataRefresh() {
         }
 
         try {
-            const response = await fetch(source.url);
+            // Determine if this is an external URL (cross-origin)
+            const isExternalUrl = source.url.startsWith('http') && !source.url.startsWith(window.location.origin);
+
+            // Use credentials: 'omit' for external URLs to avoid CORS issues
+            const fetchOptions: RequestInit = isExternalUrl ? { credentials: 'omit' } : {};
+
+            const response = await fetch(source.url, fetchOptions);
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
