@@ -3,6 +3,7 @@
 
 import * as React from 'react';
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     Box,
     Button,
@@ -189,36 +190,38 @@ export const DataLoadMenu: React.FC<DataLoadMenuProps> = ({
     variant = 'dialog'
 }) => {
     const theme = useTheme();
+    const { t } = useTranslation();
+    
     // Data source configurations
     const regularDataSources = [
         { 
             value: 'explore' as UploadTabType, 
-            title: 'Sample Datasets', 
-            description: 'Explore and load curated example datasets',
+            title: t('upload.sampleDatasets'), 
+            description: t('upload.sampleDatasetsDesc'),
             icon: <ExploreIcon />, 
             disabled: false,
             disabledReason: undefined
         },
         { 
             value: 'upload' as UploadTabType, 
-            title: 'Upload File', 
-            description: 'Upload local files (CSV, TSV, JSON, Excel)',
+            title: t('upload.uploadFile'), 
+            description: t('upload.uploadFileDesc'),
             icon: <UploadFileIcon />, 
             disabled: false,
             disabledReason: undefined
         },
         { 
             value: 'paste' as UploadTabType, 
-            title: 'Paste Data', 
-            description: 'Paste tabular data directly from clipboard',
+            title: t('upload.pasteData'), 
+            description: t('upload.pasteDataDesc'),
             icon: <ContentPasteIcon />, 
             disabled: false,
             disabledReason: undefined
         },
         { 
             value: 'extract' as UploadTabType, 
-            title: 'Extract Unstructured Data', 
-            description: 'Extract tables from images or text using AI',
+            title: t('upload.extractData'), 
+            description: t('upload.extractDataDesc'),
             icon: <ImageSearchIcon />, 
             disabled: false,
             disabledReason: undefined
@@ -228,19 +231,19 @@ export const DataLoadMenu: React.FC<DataLoadMenuProps> = ({
     const liveDataSources = [
         { 
             value: 'url' as UploadTabType, 
-            title: 'Load from URL', 
-            description: 'Load data from a URL with optional auto-refresh',
+            title: t('upload.loadFromUrl'), 
+            description: t('upload.loadFromUrlDesc'),
             icon: <LinkIcon />, 
             disabled: false,
             disabledReason: undefined
         },
         { 
             value: 'database' as UploadTabType, 
-            title: 'Database', 
-            description: 'Connect to databases or data services',
+            title: t('upload.database'), 
+            description: t('upload.databaseDesc'),
             icon: <StorageIcon />, 
             disabled: serverConfig.DISABLE_DATABASE,
-            disabledReason: 'Database connection is disabled in this environment'
+            disabledReason: t('upload.databaseDisabled')
         },
     ];
 
@@ -278,7 +281,7 @@ export const DataLoadMenu: React.FC<DataLoadMenuProps> = ({
                         '0%': { opacity: 1, color: 'primary.main' },
                         '50%': { opacity: 0.5, color: 'primary.light' },
                         '100%': { opacity: 1, color: 'primary.main' },
-                    }, }} /> Connect to live data sources
+                    }, }} /> {t('upload.liveData')}
                 </Typography>
                 <Typography 
                     variant="body2" 
@@ -290,7 +293,7 @@ export const DataLoadMenu: React.FC<DataLoadMenuProps> = ({
                         letterSpacing: '0.02em'
                     }}
                 >
-                    Load local data
+                    {t('upload.title')}
                 </Typography>
                 
                 {/* Background for Live Data Column */}
@@ -384,7 +387,7 @@ export const DataLoadMenu: React.FC<DataLoadMenuProps> = ({
                     letterSpacing: '0.02em'
                 }}
             >
-                Local data
+                {t('upload.title')}
             </Typography>
 
             <Box sx={{ 
@@ -425,7 +428,7 @@ export const DataLoadMenu: React.FC<DataLoadMenuProps> = ({
                     '0%': { opacity: 1, color: 'primary.main' },
                     '50%': { opacity: 0.5, color: 'primary.light' },
                     '100%': { opacity: 1, color: 'primary.main' },
-                }, }} /> Or connect to a data source (with optional auto-refresh)
+                }, }} /> {t('upload.liveData')}
             </Typography>
 
             <Box sx={{ 
@@ -932,16 +935,18 @@ export const UnifiedDataUploadDialog: React.FC<UnifiedDataUploadDialogProps> = (
     const showUrlPreview = urlPreviewLoading || !!urlPreviewError || (urlPreviewTables && urlPreviewTables.length > 0);
     const hasPasteContent = (pasteContent || '').trim() !== '';
 
+    const { t } = useTranslation();
+    
     // Get current tab title for header
     const getCurrentTabTitle = () => {
         const tabTitles: Record<UploadTabType, string> = {
-            'menu': 'Load Data',
-            'explore': 'Sample Datasets',
-            'upload': 'Upload File',
-            'paste': 'Paste Data',
+            'menu': t('upload.title'),
+            'explore': t('upload.sampleDatasets'),
+            'upload': t('upload.uploadFile'),
+            'paste': t('upload.pasteData'),
             'extract': 'Extract from Documents',
-            'url': 'Load from URL',
-            'database': 'Database',
+            'url': t('upload.loadFromUrl'),
+            'database': t('upload.database'),
         };
         return tabTitles[activeTab] || 'Add Data';
     };
@@ -974,10 +979,10 @@ export const UnifiedDataUploadDialog: React.FC<UnifiedDataUploadDialogProps> = (
                     </IconButton>
                 )}
                 <Typography variant="h6" component="span">
-                    {activeTab === 'menu' ? 'Load Data' : getCurrentTabTitle()}
+                    {activeTab === 'menu' ? t('upload.title') : getCurrentTabTitle()}
                 </Typography>
                 {activeTab === 'extract' && dataCleanBlocks.length > 0 && (
-                    <Tooltip title="Reset extraction">
+                    <Tooltip title={t('upload.resetExtraction')}>
                         <IconButton 
                             size="small" 
                             color='warning' 
@@ -1059,14 +1064,14 @@ export const UnifiedDataUploadDialog: React.FC<UnifiedDataUploadDialogProps> = (
                             >
                                 <UploadFileIcon sx={{ fontSize: showFilePreview ? 28 : 36, color: 'text.secondary', mb: 1 }} />
                                 <Typography variant={showFilePreview ? "body2" : "subtitle1"} gutterBottom>
-                                    Drag & drop file here
+                                    {t('upload.dragDrop')}
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary" sx={{ fontSize: showFilePreview ? '0.75rem' : '0.875rem' }}>
-                                    or <Link component="button" sx={{ textDecoration: 'underline', cursor: 'pointer' }}>Browse</Link>
+                                    {t('upload.orBrowse')}
                                 </Typography>
                                 {!showFilePreview && (
                                     <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                                        Supported: CSV, TSV, JSON, Excel (xlsx, xls)
+                                        {t('upload.supportedFormats')}
                                     </Typography>
                                 )}
                             </Box>
@@ -1138,12 +1143,12 @@ export const UnifiedDataUploadDialog: React.FC<UnifiedDataUploadDialogProps> = (
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                     <TextField
                                         fullWidth
-                                        placeholder="Enter URL: https://example.com/data.json or /api/data"
+                                        placeholder={t('upload.placeholder.url')}
                                         value={tableURL || ''}
                                         onChange={(e) => setTableURL((e.target.value || '').trim())}
                                         inputRef={urlInputRef}
                                         error={tableURL !== "" && !hasValidUrl}
-                                        helperText={tableURL !== "" && !hasValidUrl ? "Enter a valid URL starting with http://, https://, or /" : undefined}
+                                        helperText={tableURL !== "" && !hasValidUrl ? t('upload.helperText.urlInvalid') : undefined}
                                         size="small"
                                         sx={{ 
                                             flex: 1,
@@ -1183,14 +1188,14 @@ export const UnifiedDataUploadDialog: React.FC<UnifiedDataUploadDialogProps> = (
                                         }
                                         label={
                                             <Typography component="span" variant="body2" sx={{ fontWeight: 500 }}>
-                                                Watch Mode
+                                                {t('upload.autoRefresh')}
                                             </Typography>
                                         }
                                     />
                                     {urlAutoRefresh ? (
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, }}>
                                             <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
-                                                check data updates every
+                                                {t('upload.refreshInterval')}
                                             </Typography>
                                             {[
                                                 { seconds: 5, label: '5s' },
@@ -1389,7 +1394,7 @@ export const UnifiedDataUploadDialog: React.FC<UnifiedDataUploadDialogProps> = (
                                 fullWidth
                                 value={pasteContent}
                                 onChange={handleContentChange}
-                                placeholder="Paste your data here (CSV, TSV, or JSON format)"
+                                placeholder={t('upload.placeholder.paste')}
                                 InputProps={{
                                     readOnly: isLargeContent && !showFullContent,
                                 }}
@@ -1445,7 +1450,7 @@ export const UnifiedDataUploadDialog: React.FC<UnifiedDataUploadDialogProps> = (
                     {serverConfig.DISABLE_DATABASE ? (
                         <Box sx={{ textAlign: 'center', py: 4, px: 2 }}>
                             <Typography color="text.secondary" sx={{ mb: 2 }}>
-                                Database connection is disabled in this environment.
+                                {t('upload.databaseDisabled')}
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
                                 Install Data Formulator locally to use database features. <br />

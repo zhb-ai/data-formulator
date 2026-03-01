@@ -77,6 +77,7 @@ import { getUrls } from '../app/utils';
 import { AppDispatch } from '../app/store';
 import StopIcon from '@mui/icons-material/Stop';
 import { useDataRefresh } from '../app/useDataRefresh';
+import { useTranslation } from 'react-i18next';
 
 export const ThinkingBanner = (message: string, sx?: SxProps) => (
     <Box sx={{ 
@@ -132,6 +133,7 @@ const StreamingSettingsPopup = memo<{
     onUpdateSettings: (autoRefresh: boolean, refreshIntervalSeconds?: number) => void;
     onRefreshNow?: () => void;
 }>(({ open, anchorEl, onClose, table, onUpdateSettings, onRefreshNow }) => {
+    const { t } = useTranslation();
     const [refreshInterval, setRefreshInterval] = useState<number>(
         table.source?.refreshIntervalSeconds || 60
     );
@@ -222,7 +224,7 @@ const StreamingSettingsPopup = memo<{
                                 }
                                 label={
                                     <Typography variant="body2" sx={{ fontSize: 11 }}>
-                                        Watch for updates
+                                        {t('dataThread.watchForUpdates')}
                                     </Typography>
                                 }
                                 sx={{ mr: 0 }}
@@ -230,7 +232,7 @@ const StreamingSettingsPopup = memo<{
                             {autoRefresh && (
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 100 }}>
                                     <Typography variant="body2" sx={{ fontSize: 11, color: 'text.secondary' }}>
-                                        every
+                                        {t('dataThread.every')}
                                     </Typography>
                                     <TextField
                                         select
@@ -276,7 +278,7 @@ const StreamingSettingsPopup = memo<{
                                         alignSelf: 'flex-start'
                                     }}
                                 >
-                                    Refresh now
+                                    {t('dataThread.refreshNow')}
                                 </Button>
                             )}
                         </Box>
@@ -297,6 +299,7 @@ const MetadataPopup = memo<{
     tableName: string;
 }>(({ open, anchorEl, onClose, onSave, initialValue, tableName }) => {
     const [metadata, setMetadata] = useState(initialValue);
+    const { t } = useTranslation();
 
     let hasChanges = metadata !== initialValue;
 
@@ -342,12 +345,12 @@ const MetadataPopup = memo<{
                     }}
                 >
                     <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                        Attach metadata to <Typography component="span" sx={{ fontSize: 'inherit', color: 'primary.main'}}>{tableName}</Typography>
+                        {t('dataThread.attachMetadataTo', { table: tableName })}
                     </Typography>
                     <TextField
                         autoFocus
-                        label="metadata"
-                        placeholder="Attach additional contexts or guidance so that AI agents can better understand and process the data."
+                        label={t('dataThread.metadata')}
+                        placeholder={t('dataThread.metadataPlaceholder')}
                         fullWidth
                         multiline
                         slotProps={{
@@ -363,8 +366,8 @@ const MetadataPopup = memo<{
                         sx={{ my: 1, '& .MuiInputBase-input': { fontSize: 12 } }}
                     />
                     <Box sx={{ mt: 1, display: 'flex', gap: 1, alignItems: 'center' }}>
-                        <Button size="small" sx={{ml: 'auto'}} onClick={handleCancel} color="primary">Cancel</Button>
-                        <Button size="small" onClick={handleSave} color="primary" disabled={!hasChanges}>Save</Button>
+                        <Button size="small" sx={{ml: 'auto'}} onClick={handleCancel} color="primary">{t('app.cancel')}</Button>
+                        <Button size="small" onClick={handleSave} color="primary" disabled={!hasChanges}>{t('app.save')}</Button>
                     </Box>
                 </Paper>
             </ClickAwayListener>
@@ -380,6 +383,7 @@ const AgentStatusBox = memo<{
 }>(({ tableId, relevantAgentActions, dispatch }) => {
 
     let theme = useTheme();
+    const { t } = useTranslation();
 
     let agentStatus = undefined;
 
@@ -427,7 +431,7 @@ const AgentStatusBox = memo<{
                         color: getAgentStatusColor(agentStatus)
                     },
                 }}>
-                    {agentStatus === 'running' && ThinkingBanner('thinking...', { py: 0.5 })}
+                    {agentStatus === 'running' && ThinkingBanner(t('dataThread.thinking'), { py: 0.5 })}
                     {agentStatus === 'completed' && <CheckCircleOutlineIcon />}
                     {agentStatus === 'failed' && <CancelOutlinedIcon />}
                     {agentStatus === 'warning' && <HelpOutlineIcon />}
@@ -435,12 +439,12 @@ const AgentStatusBox = memo<{
                         ml: 0.5, 
                         fontSize: 10,
                     }}>
-                        {agentStatus === 'warning' && 'hmm...'}
-                        {agentStatus === 'failed' && 'oops...'}
-                        {agentStatus === 'completed' && 'completed'}
+                        {agentStatus === 'warning' && t('dataThread.hmm')}
+                        {agentStatus === 'failed' && t('dataThread.oops')}
+                        {agentStatus === 'completed' && t('dataThread.completed')}
                         {agentStatus === 'running' && ''}
                     </Typography>
-                    <Tooltip title="Delete message">
+                    <Tooltip title={t('dataThread.deleteMessage')}>
                         <IconButton
                             className="delete-button"
                             size="small"
@@ -521,6 +525,7 @@ const EditableTableName: FC<{
     handleUpdateTableDisplayId: (tableId: string, displayId: string) => void,
     nonEditingSx?: SxProps
 }> = ({ initialValue, tableId, handleUpdateTableDisplayId, nonEditingSx }) => {
+    const { t } = useTranslation();
     const [isEditing, setIsEditing] = useState(false);
     const [inputValue, setInputValue] = useState(initialValue);
     
@@ -547,7 +552,7 @@ const EditableTableName: FC<{
 
     if (!isEditing) {
         return (
-            <Tooltip title="edit table name">
+            <Tooltip title={t('dataThread.editTableName')}>
                 <Typography
                     onClick={(event) => {
                         event.stopPropagation();
@@ -648,6 +653,7 @@ let CompactThread0View: FC<{
     sx
 }) {
     const theme = useTheme();
+    const { t } = useTranslation();
     
     return (
         <Box sx={{ ...sx, 
@@ -664,7 +670,7 @@ let CompactThread0View: FC<{
                     "&::before, &::after": { borderColor: alpha(theme.palette.custom.main, 0.2), borderWidth: '2px', width: 60 },
                 }}>
                     <Typography sx={{ fontSize: "10px",  color: 'text.secondary', textTransform: 'none' }}>
-                        workspace
+                        {t('dataThread.workspace')}
                     </Typography>
                 </Divider>
             </Box>
@@ -703,6 +709,7 @@ let SingleThreadGroupView: FC<{
 
     let tables = useSelector((state: DataFormulatorState) => state.tables);
     const { manualRefresh } = useDataRefresh();
+    const { t } = useTranslation();
 
     let leafTableIds = leafTables.map(lt => lt.id);
     let parentTableId = leafTables[0].derive?.trigger.tableId || undefined;
@@ -1033,7 +1040,7 @@ let SingleThreadGroupView: FC<{
                     <Stack direction="row" sx={{ marginLeft: 0.5, marginRight: 'auto', fontSize: 12 }} alignItems="center" gap={"2px"}>
                         {/* For non-derived tables: icon opens menu; for derived tables: icon toggles anchored */}
                         {table?.derive == undefined ? (
-                            <Tooltip title="more options">
+                            <Tooltip title={t('dataThread.moreOptions')}>
                                 <IconButton color="primary" sx={{
                                     minWidth: 0, 
                                     padding: 0.25,
@@ -1074,13 +1081,13 @@ let SingleThreadGroupView: FC<{
                         <Box sx={{ margin: '4px 8px 4px 2px', display: 'flex', alignItems: 'center' }}>
                             {/* Only show streaming icon when actively watching for updates */}
                             {(table?.source?.type === 'stream' || table?.source?.type === 'database') && table?.source?.autoRefresh ? (
-                                <Tooltip title={`Auto-refresh every ${
+                                <Tooltip title={t('dataThread.autoRefreshTooltip', { interval: 
                                     (table.source?.refreshIntervalSeconds || 60) < 60 
                                         ? `${table.source?.refreshIntervalSeconds}s` 
                                         : (table.source?.refreshIntervalSeconds || 60) < 3600 
                                             ? `${Math.floor((table.source?.refreshIntervalSeconds || 60) / 60)}m`
                                             : `${Math.floor((table.source?.refreshIntervalSeconds || 60) / 3600)}h`
-                                } - Click to change interval or stop watching`}>
+                                })}>
                                     <IconButton
                                         size="small"
                                         onClick={(event) => {
@@ -1123,7 +1130,7 @@ let SingleThreadGroupView: FC<{
                         </Box>
                     </Stack>
                     <ButtonGroup aria-label="Basic button group" variant="text" sx={{ textAlign: 'end', margin: "auto 2px auto auto" }}>
-                        <Tooltip key="create-new-chart-btn-tooltip" title="create a new chart">
+                        <Tooltip key="create-new-chart-btn-tooltip" title={t('dataThread.createNewChart')}>
                             <IconButton aria-label="create chart" size="small" sx={{ padding: 0.25, '&:hover': {
                                 transform: 'scale(1.2)',
                                 transition: 'all 0.1s linear'
@@ -1140,7 +1147,7 @@ let SingleThreadGroupView: FC<{
                         
                         {/* Delete button - shown for all deletable tables */}
                         {tableDeleteEnabled && (
-                            <Tooltip key="delete-table-btn-tooltip" title="delete table">
+                            <Tooltip key="delete-table-btn-tooltip" title={t('dataThread.deleteTable')}>
                                 <IconButton aria-label="delete" size="small" sx={{ padding: 0.25, '&:hover': {
                                     transform: 'scale(1.2)',
                                     transition: 'all 0.1s linear'
@@ -1308,7 +1315,7 @@ let SingleThreadGroupView: FC<{
                             fontSize: 16,
                             color: selectedTableForMenu?.attachedMetadata ? 'secondary.main' : 'text.secondary',
                         }}/>
-                        {selectedTableForMenu?.attachedMetadata ? "Edit metadata" : "Attach metadata"}
+                        {selectedTableForMenu?.attachedMetadata ? t('dataThread.editMetadata') : t('dataThread.attachMetadata')}
                     </MenuItem>
                     {/* Watch for updates option - only shown when table has stream/database source but not actively watching */}
                     {selectedTableForMenu && 
@@ -1325,7 +1332,7 @@ let SingleThreadGroupView: FC<{
                             sx={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: 1 }}
                         >
                             <StreamIcon sx={{ fontSize: 16, color: 'text.secondary' }}/>
-                            Watch for updates
+                            {t('dataThread.watchForUpdates')}
                         </MenuItem>
                     )}
                     {/* Refresh data - hidden for database tables */}
@@ -1340,7 +1347,7 @@ let SingleThreadGroupView: FC<{
                             sx={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: 1 }}
                         >
                             <RefreshIcon sx={{ fontSize: 16, color: 'primary.main' }}/>
-                            Refresh data
+                            {t('dataThread.refreshData')}
                         </MenuItem>
                     )}
                 </Menu>
@@ -1380,7 +1387,7 @@ let SingleThreadGroupView: FC<{
                 "&::before, &::after": { borderColor: alpha(theme.palette.custom.main, 0.2), borderWidth: '2px', width: 60 },
             }}>
                 <Typography sx={{ fontSize: "10px",  color: 'text.secondary', textTransform: 'none' }}>
-                    {threadIdx === -1 ? 'thread0' : `thread - ${threadIdx + 1}`}
+                    {threadIdx === -1 ? t('dataThread.threadZero') : t('dataThread.threadIndex', { index: threadIdx + 1 })}
                 </Typography>
             </Divider>
         </Box>
@@ -1447,7 +1454,7 @@ let SingleThreadGroupView: FC<{
                     fontSize: 16,
                     color: selectedTableForMenu?.attachedMetadata ? 'secondary.main' : 'text.secondary',
                 }}/>
-                {selectedTableForMenu?.attachedMetadata ? "Edit metadata" : "Attach metadata"}
+                {selectedTableForMenu?.attachedMetadata ? t('dataThread.editMetadata') : t('dataThread.attachMetadata')}
             </MenuItem>
             {/* Watch for updates option - only shown when table has stream/database source but not actively watching */}
             {selectedTableForMenu && 
@@ -1464,7 +1471,7 @@ let SingleThreadGroupView: FC<{
                     sx={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: 1 }}
                 >
                     <StreamIcon sx={{ fontSize: 16, color: 'text.secondary' }}/>
-                    Watch for updates
+                    {t('dataThread.watchForUpdates')}
                 </MenuItem>
             )}
             {/* Refresh data - hidden for database tables */}
@@ -1479,7 +1486,7 @@ let SingleThreadGroupView: FC<{
                     sx={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: 1 }}
                 >
                     <RefreshIcon sx={{ fontSize: 16, color: 'primary.main' }}/>
-                    Refresh data
+                    {t('dataThread.refreshData')}
                 </MenuItem>
             )}
             <MenuItem 
@@ -1494,7 +1501,7 @@ let SingleThreadGroupView: FC<{
                 sx={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: 1, color: 'warning.main' }}
             >
                 <DeleteIcon sx={{ fontSize: 16 }} color='warning'/>
-                Delete table
+                {t('dataThread.deleteTable')}
             </MenuItem>
         </Menu>
 
@@ -1531,6 +1538,7 @@ const VegaLiteChartElement = memo<{
     onChartClick: (chartId: string, tableId: string) => void,
     onDelete: (chartId: string) => void
 }>(({ chart, assembledSpec, table, status, isSaved, onChartClick, onDelete }) => {
+    const { t } = useTranslation();
     const id = `data-thread-chart-Element-${chart.id}`;
     return (
         <Box
@@ -1550,7 +1558,7 @@ const VegaLiteChartElement = memo<{
                 </Box>}
                 <Box className='data-thread-chart-card-action-button'
                     sx={{ zIndex: 10, color: 'blue', position: "absolute", right: 1, background: 'rgba(255, 255, 255, 0.95)' }}>
-                    <Tooltip title="delete chart">
+                    <Tooltip title={t('dataThread.deleteChart')}>
                         <IconButton 
                             size="small" 
                             color="warning" 
@@ -1587,6 +1595,7 @@ const MemoizedChartObject = memo<{
     onChartClick: (chartId: string, tableId: string) => void;
     onDelete: (chartId: string) => void;
 }>(({ chart, table, conceptShelfItems, status, onChartClick, onDelete }) => {
+    const { t } = useTranslation();
     
     let visTableRows: any[] = [];
     if (table.rows.length > 1000) {
@@ -1600,7 +1609,7 @@ const MemoizedChartObject = memo<{
 
     let deleteButton = <Box className='data-thread-chart-card-action-button'
         sx={{ zIndex: 10, color: 'blue', position: "absolute", right: 1, background: 'rgba(255, 255, 255, 0.95)' }}>
-        <Tooltip title="delete chart">
+        <Tooltip title={t('dataThread.deleteChart')}>
             <IconButton size="small" color="warning" onClick={(event) => {
                 event.stopPropagation();
                 onDelete(chart.id);
@@ -1716,6 +1725,7 @@ const MemoizedChartObject = memo<{
 });
 
 export const DataThread: FC<{sx?: SxProps}> = function ({ sx }) {
+    const { t } = useTranslation();
 
     let tables = useSelector((state: DataFormulatorState) => state.tables);
     let focusedTableId = useSelector((state: DataFormulatorState) => state.focusedTableId);
@@ -1965,7 +1975,7 @@ export const DataThread: FC<{sx?: SxProps}> = function ({ sx }) {
             const label = startNum === endNum ? startNum : `${startNum}-${endNum}`;
             
             return (
-                <Tooltip key={`thread-nav-group-${groupIdx}`} title={`Jump to thread${startNum === endNum ? '' : 's'} ${label}`}>
+                <Tooltip key={`thread-nav-group-${groupIdx}`} title={t('dataThread.jumpToThreadRange', { label })}>
                     <IconButton
                         size="small"
                         color="primary"
@@ -2010,7 +2020,7 @@ export const DataThread: FC<{sx?: SxProps}> = function ({ sx }) {
         {threadIndices.map((threadIdx) => {
             const label = threadIdx === -1 ? '0' : String(threadIdx + 1);
             return (
-                <Tooltip key={`thread-nav-${threadIdx}`} title={`Jump to thread${threadIdx === -1 ? '0' : ` ${threadIdx + 1}`}`}>
+                <Tooltip key={`thread-nav-${threadIdx}`} title={t('dataThread.jumpToThreadRange', { label })}>
                     <IconButton 
                         size="small" 
                         color="primary"
@@ -2037,13 +2047,13 @@ export const DataThread: FC<{sx?: SxProps}> = function ({ sx }) {
             }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <Typography className="view-title" component="h2" sx={{ marginTop: "6px" }}>
-                        Data Threads
+                        {t('dataThread.title')}
                     </Typography>
                     {jumpButtons}
                 </Box>
                 
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>   
-                    <Tooltip title={"collapse"}>
+                    <Tooltip title={t('dataThread.collapse')}>
                         <span>
                             <IconButton size={'small'} color="primary" 
                             disabled={drawerOpen === false} onClick={() => { setThreadDrawerOpen(false); }}>
@@ -2051,7 +2061,7 @@ export const DataThread: FC<{sx?: SxProps}> = function ({ sx }) {
                             </IconButton>
                         </span>
                     </Tooltip>
-                    <Tooltip title={"expand"}>
+                    <Tooltip title={t('dataThread.expand')}>
                         <span>
                             <IconButton size={'small'} color="primary" 
                                 disabled={totalThreadCount <= 1} onClick={() => { 

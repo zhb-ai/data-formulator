@@ -46,6 +46,7 @@ import { DictTable } from '../components/ComponentType';
 import { CodeBox } from './VisualizationView';
 import { CustomReactTable } from './ReactTable';
 import { alpha } from '@mui/material/styles';
+import { useTranslation } from 'react-i18next';
 
 export interface ConceptCardProps {
     field: FieldItem,
@@ -67,6 +68,7 @@ export const ConceptCard: FC<ConceptCardProps> = function ConceptCard({ field, s
     const [editMode, setEditMode] = useState(field.name == "" ? true : false);
 
     const dispatch = useDispatch();
+    const { t } = useTranslation();
     let handleDeleteConcept = (conceptID: string) => dispatch(dfActions.deleteConceptItemByID(conceptID));
     let handleUpdateConcept = (concept: FieldItem) => dispatch(dfActions.updateConceptItems(concept));
 
@@ -92,7 +94,7 @@ export const ConceptCard: FC<ConceptCardProps> = function ConceptCard({ field, s
 
     let deleteOption = !(field.source == "original") && <IconButton size="small"
             key="delete-icon-button"
-            color="primary" aria-label="Delete" component="span"
+            color="primary" aria-label={t('app.delete')} component="span"
             onClick={() => { handleDeleteConcept(field.id); }}>
             <DeleteIcon fontSize="inherit" />
         </IconButton>;
@@ -111,7 +113,7 @@ export const ConceptCard: FC<ConceptCardProps> = function ConceptCard({ field, s
         fontSize: "inherit", marginLeft: "3px", whiteSpace: "nowrap",
         overflow: "hidden", textOverflow: "ellipsis", flexShrink: 1
     }}>{field.name}</Typography>
-        : <Typography sx={{ fontSize: 12, marginLeft: "3px", color: "gray", fontStyle: "italic" }}>new concept</Typography>;
+        : <Typography sx={{ fontSize: 12, marginLeft: "3px", color: "gray", fontStyle: "italic" }}>{t('refresh.newConcept')}</Typography>;
 
     let backgroundColor = theme.palette.primary.main;
     if (field.source == "original") {

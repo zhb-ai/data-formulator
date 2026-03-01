@@ -52,6 +52,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { convertToChartifact, openChartifactViewer } from './ChartifactDialog';
 import StreamIcon from '@mui/icons-material/Stream';
+import { useTranslation } from 'react-i18next';
 
 // Typography constants
 const FONT_FAMILY_SYSTEM = '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol"';
@@ -226,6 +227,7 @@ export const ReportView: FC = () => {
     const allGeneratedReports = useSelector(dfSelectors.getAllGeneratedReports);
     const focusedChartId = useSelector((state: DataFormulatorState) => state.focusedChartId);
     const theme = useTheme();
+    const { t } = useTranslation();
 
     const [selectedChartIds, setSelectedChartIds] = useState<Set<string>>(new Set(focusedChartId ? [focusedChartId] : []));
     const [previewImages, setPreviewImages] = useState<Map<string, { url: string; width: number; height: number }>>(new Map());
@@ -1144,7 +1146,7 @@ export const ReportView: FC = () => {
                                                 </Typography>
                                             </Box>
                                         </Button>
-                                        <Tooltip title="Delete report">
+                                        <Tooltip title={t('report.deleteReport')}>
                                             <IconButton
                                                 size="small"
                                                 disabled={isGenerating}
@@ -1176,7 +1178,7 @@ export const ReportView: FC = () => {
                             {/* Action Buttons */}
                             {currentReportId && (
                                 <Box sx={{ position: 'absolute', top: 16, right: 16, zIndex: 10, display: 'flex', gap: 1 }}>
-                                    <Tooltip title="Create Chartifact report">
+                                    <Tooltip title={t('report.createChartifactReport')}>
                                         <Button
                                             variant="contained"
                                             size="small"
@@ -1205,7 +1207,7 @@ export const ReportView: FC = () => {
                                             Create Chartifact
                                         </Button>
                                     </Tooltip>
-                                    <Tooltip title="Share report as image">
+                                    <Tooltip title={t('report.shareReportAsImage')}>
                                         <Button
                                             variant="contained"
                                             size="small"

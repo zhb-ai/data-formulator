@@ -32,6 +32,7 @@ import { DataCleanBlock, DataCleanTableOutput } from '../components/ComponentTyp
 import { getUrls } from '../app/utils';
 import { CustomReactTable } from './ReactTable';
 import { createTableFromText } from '../data/utils';
+import { useTranslation } from 'react-i18next';
 
 type DialogContentItem = {
     type: 'text';
@@ -206,6 +207,7 @@ export const DataPreviewBox: React.FC<{sx?: SxProps}> = ({sx}) => {
 export const DataLoadingInputBox = React.forwardRef<(() => void) | null, {maxLines?: number, onStreamingContentUpdate?: (content: string) => void, abortControllerRef?: React.MutableRefObject<AbortController | null>}>(({maxLines = 4, onStreamingContentUpdate, abortControllerRef}, ref) => {
     const dispatch = useDispatch<AppDispatch>();
     const theme = useTheme();
+    const { t } = useTranslation();
     const activeModel = useSelector(dfSelectors.getActiveModel);
     const dataCleanBlocks = useSelector((state: DataFormulatorState) => state.dataCleanBlocks);
     const cleanInProgress = useSelector((state: DataFormulatorState) => state.cleanInProgress);
@@ -627,7 +629,7 @@ Revenue in More Personal Computing was $13.5 billion and increased 9%, with the 
                         zIndex: 2
                     }
                 }}
-                placeholder={cleanInProgress ? 'extracting data...' : placeholder}
+                placeholder={cleanInProgress ? t('dataLoading.extractingData') : placeholder}
                 variant="standard"
                 multiline
                 value={prompt}
@@ -645,7 +647,7 @@ Revenue in More Personal Computing was $13.5 billion and increased 9%, with the 
                 slotProps={{
                     input: {
                         endAdornment: cleanInProgress ? (
-                            <Tooltip title="Stop generation">
+                            <Tooltip title={t('dataLoading.stopGeneration')}>
                                 <IconButton color='error' size="small" onClick={stopGeneration}>
                                     <StopIcon />
                                 </IconButton>
@@ -665,7 +667,7 @@ Revenue in More Personal Computing was $13.5 billion and increased 9%, with the 
             {!existOutputBlocks && !cleanInProgress && (
                 <Box sx={{ mt: 2, mb: 1 }}>
                     <Typography sx={{ fontSize: '11px', color: 'text.secondary', mb: 1 }}>
-                        examples
+                        {t('dataLoading.examples')}
                     </Typography>
                     <Box sx={{
                         display: 'flex',
@@ -796,6 +798,7 @@ export const createOrderedThreadBlocks = (dataCleanBlocks: DataCleanBlock[]): Th
 export const SingleDataCleanThreadView: React.FC<{thread: ThreadBlock, sx?: SxProps}> = ({thread, sx}) => {
     const {threadIndex, blocks, leafBlock} = thread;
     const theme = useTheme();
+    const { t } = useTranslation();
 
     const dispatch = useDispatch<AppDispatch>();
     const focusedDataCleanBlockId = useSelector((state: DataFormulatorState) => state.focusedDataCleanBlockId);
@@ -824,7 +827,7 @@ export const SingleDataCleanThreadView: React.FC<{thread: ThreadBlock, sx?: SxPr
                     "&::before, &::after": { borderColor: alpha(theme.palette.divider, 0.2), borderWidth: '2px', width: 60 },
                 }}>
                     <Typography sx={{ fontSize: "10px",   textTransform: 'none' }}>
-                        {`loading - ${threadIndex + 1}`}
+                        {t('dataLoading.loadingThread', { index: threadIndex + 1 })}
                     </Typography>
                 </Divider>
             </Box>
@@ -953,7 +956,7 @@ export const SingleDataCleanThreadView: React.FC<{thread: ThreadBlock, sx?: SxPr
                                             }}>
                                                 {table.name}
                                             </Typography>
-                                            {isLastBlock && <Tooltip title="delete table">
+                                            {isLastBlock && <Tooltip title={t('dataLoading.deleteTable')}>
                                                 <IconButton aria-label="share" size="small" sx={{ ml: 'auto', padding: 0.25, '&:hover': {
                                                     transform: 'scale(1.2)',
                                                     transition: 'all 0.2s ease'

@@ -63,6 +63,7 @@ import { DataFormulatorState } from '../app/dfSlice';
 import { fetchFieldSemanticType } from '../app/dfSlice';
 import { AppDispatch } from '../app/store';
 import Markdown from 'markdown-to-jsx';
+import { useTranslation } from 'react-i18next';
 
 import CheckIcon from '@mui/icons-material/Check';
 import MuiMarkdown from 'mui-markdown';
@@ -186,6 +187,7 @@ export const DBManagerPane: React.FC<{
 }> = function DBManagerPane({ }) {
     
     const theme = useTheme();
+    const { t } = useTranslation();
 
     const dispatch = useDispatch<AppDispatch>();
     const sessionId = useSelector((state: DataFormulatorState) => state.sessionId);
@@ -231,7 +233,7 @@ export const DBManagerPane: React.FC<{
     let setSystemMessage = (content: string, severity: "error" | "warning" | "info" | "success") => {
         dispatch(dfActions.addMessages({
             "timestamp": Date.now(),
-            "component": "DB manager",
+            "component": t('db.manager'),
             "type": severity,
             "value": content
         }));
@@ -262,7 +264,7 @@ export const DBManagerPane: React.FC<{
                 return data.tables;
             }
         } catch (error) {
-            setSystemMessage('Failed to fetch tables, please check if the server is running', "error");
+            setSystemMessage(t('db.failedFetchTables'), "error");
         }
         return undefined;
     };
@@ -306,10 +308,10 @@ export const DBManagerPane: React.FC<{
                 fetchTables();  // Refresh table list
             } else {
                 // Handle error from server
-                setSystemMessage(data.error || 'Failed to upload table', "error");
+                setSystemMessage(data.error || t('db.failedUploadTable'), "error");
             }
         } catch (error) {
-            setSystemMessage('Failed to upload table, please check if the server is running', "error");
+            setSystemMessage(t('db.failedUploadTableServer'), "error");
         } finally {
             setIsUploading(false);
         }
@@ -332,14 +334,14 @@ export const DBManagerPane: React.FC<{
             const data = await response.json();
             if (data.status === 'success') {
                 if (data.is_renamed) {
-                    setSystemMessage(`Table ${data.original_name} already exists. Renamed to ${data.table_name}`, "warning");
+                    setSystemMessage(t('db.tableRenamed', { original: data.original_name, renamed: data.table_name }), "warning");
                 } 
                 fetchTables();  // Refresh table list
             } else {
-                setSystemMessage(data.error || 'Failed to upload table', "error");
+                setSystemMessage(data.error || t('db.failedUploadTable'), "error");
             }
         } catch (error) {
-            setSystemMessage('Failed to upload table, please check if the server is running', "error");
+            setSystemMessage(t('db.failedUploadTableServer'), "error");
         } finally {
             setIsUploading(false);
             // Clear the file input value to allow uploading the same file again
@@ -358,10 +360,10 @@ export const DBManagerPane: React.FC<{
             if (data.status === 'success') {
                 fetchTables();
             } else {
-                setSystemMessage(data.error || 'Failed to reset database', "error");
+                setSystemMessage(data.error || t('db.failedResetDatabase'), "error");
             }
         } catch (error) {
-            setSystemMessage('Failed to reset database', "error");
+            setSystemMessage(t('db.failedResetDatabase'), "error");
         }
     }
 
@@ -369,7 +371,7 @@ export const DBManagerPane: React.FC<{
         let unreferencedViews = dbTables.filter(t => t.view_source !== null && t.view_source !== undefined && !tables.some(t2 => t2.id === t.name));
 
         if (unreferencedViews.length > 0) {
-            if (confirm(`Are you sure you want to delete the following unreferenced derived views? \n${unreferencedViews.map(v => `- ${v.name}`).join("\n")}`)) {
+            if (confirm(`${t('db.confirmDeleteUnusedViews')} \n${unreferencedViews.map(v => `- ${v.name}`).join("\n")}`)) {
                 let deletedViews = [];
                 for (let view of unreferencedViews) {
                     try {
@@ -384,14 +386,14 @@ export const DBManagerPane: React.FC<{
                         if (data.status === 'success') {
                             deletedViews.push(view.name);
                         } else {
-                            setSystemMessage(data.error || 'Failed to delete table', "error");
+                            setSystemMessage(data.error || t('db.failedDeleteTable'), "error");
                         }
                     } catch (error) {
-                        setSystemMessage('Failed to delete table, please check if the server is running', "error");
+                        setSystemMessage(t('db.failedDeleteTableServer'), "error");
                     }
                 }
                 if (deletedViews.length > 0) {
-                    setSystemMessage(`Deleted ${deletedViews.length} unreferenced derived views: ${deletedViews.join(", ")}`, "success");
+                    setSystemMessage(t('db.deletedUnusedViews', { count: deletedViews.length, views: deletedViews.join(", ") }), "success");
                 }
                 fetchTables();
                 setSelectedTabKey(dbTables.length > 0 ? dbTables[0].name : "");
@@ -402,7 +404,7 @@ export const DBManagerPane: React.FC<{
     // Delete table
     const handleDropTable = async (tableName: string) => {
         if (tables.some(t => t.id === tableName)) {
-            if (!confirm(`Are you sure you want to delete ${tableName}? \n ${tableName} is currently loaded into the data formulator and will be removed from the database.`)) return;
+            if (!confirm(t('db.confirmDeleteTableLoaded', { table: tableName }))) return;
         }
 
         try {
@@ -418,10 +420,10 @@ export const DBManagerPane: React.FC<{
                 fetchTables();
                 setSelectedTabKey(dbTables.length > 0 ? dbTables[0].name : "");
             } else {
-                setSystemMessage(data.error || 'Failed to delete table', "error");
+                setSystemMessage(data.error || t('db.failedDeleteTable'), "error");
             }
         } catch (error) {
-            setSystemMessage('Failed to delete table, please check if the server is running', "error");
+            setSystemMessage(t('db.failedDeleteTableServer'), "error");
         }
     };
 
@@ -488,7 +490,7 @@ export const DBManagerPane: React.FC<{
 
     function uploadFileButton(element: React.ReactNode, buttonSx?: SxProps) {
         return (
-            <Tooltip title="upload a csv/tsv file to the local database">
+            <Tooltip title={t('db.uploadTableTooltip')}>
                 <span>
                     <Button
                         variant="text"
@@ -524,7 +526,7 @@ export const DBManagerPane: React.FC<{
                     my: 1,
                     display: 'block'
                 }}>
-                    External Data Loaders
+                    {t('db.externalDataLoaders')}
                 </Typography>
                 <Box sx={{ 
                     display: 'flex', 
@@ -536,7 +538,7 @@ export const DBManagerPane: React.FC<{
                 }}>
                     <Chip
                         key="file upload"
-                        label="file"
+                        label={t('upload.uploadFile')}
                         size="small"
                         variant="outlined"
                         onClick={() => setSelectedDataLoader("file upload")}
@@ -590,7 +592,7 @@ export const DBManagerPane: React.FC<{
                 flexGrow: 1,
                 fontSize: "0.75rem",
             }}>
-                Local DuckDB
+                {t('db.localDuckDB')}
             </Typography>
             <IconButton 
                 ref={menuButtonRef}
@@ -626,7 +628,7 @@ export const DBManagerPane: React.FC<{
                     dense
                 >
                     <RefreshIcon sx={{ fontSize: 16, mr: 1 }} />
-                    Refresh table list
+                    {t('db.refreshTableList')}
                 </MenuItem>
                 <Divider />
                 <MenuItem 
@@ -638,7 +640,7 @@ export const DBManagerPane: React.FC<{
                     dense
                 >
                     <UploadFileIcon sx={{ fontSize: 16, mr: 1 }} />
-                    Import database file
+                    {t('db.importDatabaseFile')}
                 </MenuItem>
                 <MenuItem 
                     onClick={() => {
@@ -647,7 +649,7 @@ export const DBManagerPane: React.FC<{
                             handleDBDownload(sessionId ?? '', dispatch)
                                 .catch(error => {
                                     console.error('Failed to download database:', error);
-                                    setSystemMessage('Failed to download database file', "error");
+                                    setSystemMessage(t('db.downloadDatabaseFailed'), "error");
                                 });
                         }
                         setTableMenuAnchorEl(null);
@@ -656,7 +658,7 @@ export const DBManagerPane: React.FC<{
                     dense
                 >
                     <DownloadIcon sx={{ fontSize: 16, mr: 1 }} />
-                    Export database file
+                    {t('db.exportDatabaseFile')}
                 </MenuItem>
                 <MenuItem 
                     onClick={() => {
@@ -673,7 +675,7 @@ export const DBManagerPane: React.FC<{
                     sx={{ color: 'error.main' }}
                 >
                     <RestartAltIcon sx={{ fontSize: 16, mr: 1 }} />
-                    Reset database
+                    {t('db.resetDatabase')}
                 </MenuItem>
             </Menu>
             <input 
@@ -689,7 +691,7 @@ export const DBManagerPane: React.FC<{
         
         {dbTables.length == 0 && 
             <Typography variant="caption" sx={{color: "lightgray", px: 2, py: 0.5, fontStyle: "italic"}}>
-                no tables available
+                {t('db.noTablesAvailable')}
             </Typography>
         }
         
@@ -772,10 +774,10 @@ export const DBManagerPane: React.FC<{
                                 minWidth: 0,
                                 textAlign: 'left',
                             }}>
-                            Views ({dbTables.filter(t => t.view_source !== null).length})
+                            {t('db.viewsWithCount', { count: dbTables.filter(t => t.view_source !== null).length })}
                         </Typography>
                     </Button>
-                    <Tooltip title="Clean up unused views">
+                    <Tooltip title={t('db.cleanUnusedViews')}>
                         <IconButton
                             size="small"
                             onClick={handleCleanDerivedViews}
@@ -854,7 +856,7 @@ export const DBManagerPane: React.FC<{
         {/* File upload */}
         {selectedDataLoader === 'file upload' && (
             <Box>
-                {uploadFileButton(<Typography component="span" fontSize={18} textTransform="none">{isUploading ? 'uploading...' : 'upload a csv/tsv file to the local database'}</Typography>)} 
+                {uploadFileButton(<Typography component="span" fontSize={18} textTransform="none">{isUploading ? t('db.uploading') : t('db.uploadTableCta')}</Typography>)} 
             </Box>
         )}
         
@@ -894,7 +896,7 @@ export const DBManagerPane: React.FC<{
         {/* Empty state */}
         {selectedTabKey === '' && (
             <Typography variant="caption" sx={{color: "text.secondary", px: 1}}>
-                The database is empty, refresh the table list or import some data to get started.
+                {t('db.databaseEmptyHint')}
             </Typography>
         )}
         
@@ -916,13 +918,13 @@ export const DBManagerPane: React.FC<{
                                 {currentTable.source_metadata && `imported from ${currentTable.source_metadata.data_loader_type}.${currentTable.source_metadata.source_table_name}`}
                             </Typography>
                         </Box>
-                        <Tooltip title="Drop Table">
+                        <Tooltip title={t('db.dropTable')}>
                             <IconButton 
                                 size="small" 
                                 color="error"
                                 sx={{ml: 'auto'}}
                                 onClick={() => handleDropTable(currentTable.name)}
-                                title="Drop Table"
+                                title={t('db.dropTable')}
                             >
                                 <DeleteIcon fontSize="small" />
                             </IconButton>
@@ -951,7 +953,7 @@ export const DBManagerPane: React.FC<{
                         {currentTable.row_count > 10 && (
                             <Box sx={{ px: 1, py: 0.5}}>
                                 <Typography variant="caption" sx={{ fontSize: 9, color: 'text.secondary', fontStyle: 'italic' }}>
-                                    Showing first 9 rows of {currentTable.row_count} total rows
+                                    {t('db.showingFirstRows', { count: currentTable.row_count })}
                                 </Typography>
                             </Box>
                         )}
@@ -970,7 +972,7 @@ export const DBManagerPane: React.FC<{
                         >
                             <CheckIcon sx={{ fontSize: 16 }} />
                             <Typography sx={{ fontSize: 'inherit', color: 'inherit', fontWeight: 'inherit' }}>
-                                Loaded
+                                {t('db.loaded')}
                             </Typography>
                         </Box>
                     ) : (
@@ -989,14 +991,14 @@ export const DBManagerPane: React.FC<{
                                             }
                                             label={
                                                 <Typography component="span" variant="body2" sx={{ fontWeight: 500 }}>
-                                                    Watch Mode
+                                                    {t('db.watchMode')}
                                                 </Typography>
                                             }
                                         />
                                         {watchEnabled ? (
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, }}>
                                                 <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
-                                                    check for updates every
+                                                    {t('db.checkUpdatesEvery')}
                                                 </Typography>
                                                 {[
                                                     { seconds: 10, label: '10s' },
@@ -1024,7 +1026,7 @@ export const DBManagerPane: React.FC<{
                                                 ))}
                                             </Box>
                                         ) : <Typography component="span" variant="caption" color="text.secondary">
-                                            automatically check and refresh data from the database at regular intervals
+                                            {t('db.watchHint')}
                                         </Typography>}
                                     </Box>
                                 </Paper>
@@ -1042,7 +1044,7 @@ export const DBManagerPane: React.FC<{
                                         } : undefined);
                                     }
                                 }}>
-                                Load {watchEnabled? 'Live' : ''} Table
+                                {t('db.loadTable', { live: watchEnabled ? t('db.livePrefix') : '' })}
                             </Button>
                         </Box>
                     )}
@@ -1087,7 +1089,7 @@ export const DBManagerPane: React.FC<{
                     >
                         <Box sx={{ p: 1.5, width: '240px' }}>
                             <Typography variant="body2" sx={{ mb: 1.5, fontSize: '12px' }}>
-                                Reset backend database and delete all tables? This cannot be undone.
+                                {t('db.resetConfirm')}
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
                                 <Button
@@ -1107,7 +1109,7 @@ export const DBManagerPane: React.FC<{
                                     }}
                                     sx={{ textTransform: 'none', fontSize: '12px', minWidth: 'auto', px: 0.75, py: 0.25, minHeight: '24px' }}
                                 >
-                                    Reset
+                                    {t('db.resetDatabase')}
                                 </Button>
                             </Box>
                         </Box>
@@ -1190,9 +1192,9 @@ export const DataLoaderForm: React.FC<{
                 <TableHead>
                     <TableRow sx={{ '& .MuiTableCell-root': { fontSize: 12 } }}>
                         <TableCell> </TableCell>
-                        <TableCell>Table Name</TableCell>
-                        <TableCell>Columns</TableCell>
-                        <TableCell align="right">Import Options</TableCell>
+                        <TableCell>{t('db.tableName')}</TableCell>
+                        <TableCell>{t('db.columns')}</TableCell>
+                        <TableCell align="right">{t('db.importOptions')}</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
@@ -1256,8 +1258,8 @@ export const DataLoaderForm: React.FC<{
                                                 '&.Mui-selected': { backgroundColor: 'grey.400', color: 'white' },
                                                 '&.Mui-selected:hover': { backgroundColor: 'grey.500' }
                                             }}>
-                                                <Tooltip title="Don't import this table">
-                                                    <span>Skip</span>
+                                                <Tooltip title={t('db.dontImportTable')}>
+                                                    <span>{t('db.skip')}</span>
                                                 </Tooltip>
                                             </ToggleButton>
                                             <ToggleButton value="full" sx={{ 
@@ -1265,8 +1267,8 @@ export const DataLoaderForm: React.FC<{
                                                 '&.Mui-selected': { backgroundColor: 'secondary.main', color: 'white' },
                                                 '&.Mui-selected:hover': { backgroundColor: 'secondary.dark' }
                                             }}>
-                                                <Tooltip title="Import entire table">
-                                                    <span>Full</span>
+                                                <Tooltip title={t('db.importEntireTable')}>
+                                                    <span>{t('db.full')}</span>
                                                 </Tooltip>
                                             </ToggleButton>
                                             <ToggleButton value="subset" onClick={(e) => {
@@ -1277,8 +1279,8 @@ export const DataLoaderForm: React.FC<{
                                                 '&.Mui-selected': { backgroundColor: '#f9a825', color: 'white' },
                                                 '&.Mui-selected:hover': { backgroundColor: '#f57f17' }
                                             }}>
-                                                <Tooltip title="Import first K rows (with optional sorting)">
-                                                    <span>Subset</span>
+                                                <Tooltip title={t('db.importSubsetTooltip')}>
+                                                    <span>{t('db.subset')}</span>
                                                 </Tooltip>
                                             </ToggleButton>
                                         </ToggleButtonGroup>
@@ -1362,10 +1364,10 @@ export const DataLoaderForm: React.FC<{
                 return (
                     <Box sx={{ fontSize: 12, p: 1.5, minWidth: 280, maxWidth: 360 }}>
                         <Typography variant="body2" sx={{ mb: 1.5, fontSize: 14, fontWeight: 600 }}>
-                            Create a subset of "{tableName}"
+                            {t('db.createSubsetOf', { table: tableName })}
                         </Typography>
                         <Typography variant="caption" sx={{  display: 'block', mb: 0.75, fontSize: 12, fontWeight: 500 }}>
-                            Row Limit (max: {metadata.row_count || 'unknown'} rows)
+                            {t('db.rowLimit', { count: metadata.row_count || 'unknown' })}
                         </Typography>
                         <Box sx={{ my: 2, ml: 2 }}>
                             <TextField
@@ -1409,7 +1411,7 @@ export const DataLoaderForm: React.FC<{
                         </Box>
                         
                         <Typography variant="caption" sx={{  display: 'block', my: 1, fontSize: 12, fontWeight: 500 }}>
-                            Sort By <span style={{ fontWeight: 400, color: 'rgba(0, 0, 0, 0.6)' }}>(optional)</span>
+                            {t('db.sortByOptional')}
                         </Typography>
                         <Box sx={{ my: 2, ml: 2 }}>
                             <Autocomplete
@@ -1426,7 +1428,7 @@ export const DataLoaderForm: React.FC<{
                                 renderInput={(params) => (
                                     <TextField 
                                         {...params} 
-                                        placeholder="Select columns..."
+                                        placeholder={t('db.selectColumns')}
                                         size="small"
                                         sx={{ '& .MuiInputBase-root': { fontSize: 12 } }}
                                     />
@@ -1464,14 +1466,14 @@ export const DataLoaderForm: React.FC<{
                                             '&.Mui-selected': { backgroundColor: 'primary.main', color: 'white' },
                                             '&.Mui-selected:hover': { backgroundColor: 'primary.dark' }
                                         }}>
-                                            ↑ Asc
+                                            ↑ {t('db.asc')}
                                         </ToggleButton>
                                         <ToggleButton value="desc" sx={{ 
                                             px: 1.5, py: 0, fontSize: 11, textTransform: 'none',
                                             '&.Mui-selected': { backgroundColor: 'primary.main', color: 'white' },
                                             '&.Mui-selected:hover': { backgroundColor: 'primary.dark' }
                                         }}>
-                                            ↓ Desc
+                                            ↓ {t('db.desc')}
                                         </ToggleButton>
                                     </ToggleButtonGroup>
                                 </Box>
@@ -1485,7 +1487,7 @@ export const DataLoaderForm: React.FC<{
                                 onClick={() => setSubsetConfigAnchor(null)}
                                 sx={{ textTransform: 'none', fontSize: 11, height: 28 }}
                             >
-                                Done
+                                {t('db.done')}
                             </Button>
                         </Box>
                     </Box>
@@ -1541,20 +1543,20 @@ export const DataLoaderForm: React.FC<{
                                     .map(r => r.table_name);
                                 // Fallback to original names if actual names not provided
                                 const finalTableNames = actualTableNames.length > 0 ? actualTableNames : tablesToImport;
-                                onFinish("success", `Successfully imported ${tablesToImport.length} table(s)`, finalTableNames);
+                                onFinish("success", t('db.successImportTables', { count: tablesToImport.length }), finalTableNames);
                             } else {
                                 // Backend returns 'message' field for errors
                                 const errorMessages = errors.map(e => e.message || e.error || 'Unknown error').filter(Boolean);
-                                onFinish("error", `Failed to import some tables: ${errorMessages.join(", ")}`);
+                                onFinish("error", t('db.failedImportSomeTables', { errors: errorMessages.join(", ") }));
                             }
                         })
                         .catch(error => {
                             console.error('Failed to ingest data:', error);
-                            onFinish("error", `Failed to ingest data: ${error}`);
+                            onFinish("error", t('db.failedIngestData', { error }));
                         });
                 }}
             >
-                Import Selected Tables to Local DuckDB ({selectedTables.length})
+                {t('db.importSelectedTables', { count: selectedTables.length })}
             </Button>
         </Box>
     ]
@@ -1564,7 +1566,7 @@ export const DataLoaderForm: React.FC<{
     return (
         <Box sx={{p: 0}}>
             <Typography sx={{fontSize: 16, flex: 1}}>
-                Import tables from <Typography component="span" sx={{ fontSize: 'inherit', color: 'secondary.main', fontWeight: 'bold'}}>{dataLoaderType}</Typography>
+                {t('db.importTablesFrom', { loader: dataLoaderType })}
             </Typography>
             {isConnecting && <Box sx={{
                 position: "absolute", top: 0, left: 0, width: "100%", height: "100%", 
@@ -1585,7 +1587,7 @@ export const DataLoaderForm: React.FC<{
                                             {paramDef.name}:
                                         </Typography>
                                         <Typography variant="body2" component="span" sx={{fontSize: 13, color: 'text.primary'}}>
-                                            {params[paramDef.name] || '(empty)'}
+                                            {params[paramDef.name] || t('db.emptyValue')}
                                         </Typography>
                                         {index < paramDefs.filter((paramDef) => params[paramDef.name]).length - 1 && (
                                             <Typography variant="body2" component="span" sx={{fontSize: 13, color: 'text.secondary', mx: 0.5}}>
@@ -1607,7 +1609,7 @@ export const DataLoaderForm: React.FC<{
                                             color: theme.palette.secondary.main
                                         }}
                                     >
-                                        table filter
+                                        {t('db.tableFilter')}
                                     </Typography>
                                 </Box>
                                 <TextField
@@ -1625,7 +1627,7 @@ export const DataLoaderForm: React.FC<{
                                     size="small"
                                     color="secondary"
                                     autoComplete="off"
-                                    placeholder="load only tables containing keywords"
+                                    placeholder={t('db.tableFilterPlaceholder')}
                                     value={tableFilter}
                                     onChange={(event) => setTableFilter(event.target.value)}
                                 />
@@ -1656,17 +1658,17 @@ export const DataLoaderForm: React.FC<{
                                             })));
                                         } else {
                                             console.error('Failed to fetch data loader tables: {}', data.message);
-                                            onFinish("error", `Failed to fetch data loader tables: ${data.message}`);
+                                            onFinish("error", t('db.failedFetchLoaderTables', { message: data.message }));
                                         }
                                         setIsConnecting(false);
                                     })
                                     .catch((error: any) => {
-                                        onFinish("error", `Failed to fetch data loader tables, please check the server is running`);
+                                        onFinish("error", t('db.failedFetchLoaderTablesServer'));
                                         setIsConnecting(false);
                                     });
                                     }}
                                 >
-                                    Refresh
+                                    {t('db.refresh')}
                                 </Button>
                                 <Button
                                     variant="outlined"
@@ -1677,7 +1679,7 @@ export const DataLoaderForm: React.FC<{
                                         setTableFilter("");
                                     }}
                                 >
-                                    Disconnect
+                                    {t('db.disconnect')}
                                 </Button>
                             </Box>
                         </Box>
@@ -1733,7 +1735,7 @@ export const DataLoaderForm: React.FC<{
                                         color: theme.palette.secondary.main
                                     }}
                                 >
-                                    table filter
+                                    {t('db.tableFilter')}
                                 </Typography>
                             </Box>
                             <TextField
@@ -1751,7 +1753,7 @@ export const DataLoaderForm: React.FC<{
                                 size="small"
                                 color="secondary"
                                 autoComplete="off"
-                                placeholder="load only tables containing keywords"
+                                placeholder={t('db.tableFilterPlaceholder')}
                                 value={tableFilter}
                                 onChange={(event) => setTableFilter(event.target.value)}
                             />
@@ -1782,16 +1784,16 @@ export const DataLoaderForm: React.FC<{
                                         })));
                                     } else {
                                         console.error('Failed to fetch data loader tables: {}', data.message);
-                                        onFinish("error", `Failed to fetch data loader tables: ${data.message}`);
+                                        onFinish("error", t('db.failedFetchLoaderTables', { message: data.message }));
                                     }
                                     setIsConnecting(false);
                                 })
                                 .catch((error: any) => {
-                                    onFinish("error", `Failed to fetch data loader tables, please check the server is running`);
+                                    onFinish("error", t('db.failedFetchLoaderTablesServer'));
                                     setIsConnecting(false);
                                 });
                             }}>
-                                Connect {tableFilter.trim() ? "with filter" : ""}
+                                {t('db.connect', { suffix: tableFilter.trim() ? t('db.withFilter') : '' })}
                             </Button>}
                     </Box>
                     <Box  sx={{display: "flex", flexDirection: "row", alignItems: "center", gap: 1, ml: 4, mt: 4}}>

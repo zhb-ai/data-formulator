@@ -23,6 +23,7 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import WarningIcon from '@mui/icons-material/Warning';
 import InfoOutlineIcon from '@mui/icons-material/InfoOutline';
 import { useTheme } from '@mui/material/styles';
+import { useTranslation } from 'react-i18next';
 
 export interface Message {
     type: "success" | "info" | "error" | "warning",
@@ -39,6 +40,7 @@ export function MessageSnackbar() {
     const displayedMessageIdx = useSelector((state: DataFormulatorState) => state.displayedMessageIdx);
     
     const dispatch = useDispatch();
+    const { t } = useTranslation();
 
     const [openLastMessage, setOpenLastMessage] = React.useState(false);
     const [latestMessage, setLatestMessage] = React.useState<Message | undefined>();
@@ -139,7 +141,7 @@ export function MessageSnackbar() {
             boxShadow: '0 0 10px rgba(0,0,0,0.1)',
             transition: 'all 0.3s ease'
         }}}>
-            <Tooltip placement="left" title="view system messages">
+            <Tooltip placement="left" title={t('messages.viewSystemMessages')}>
                 <IconButton 
                     className='snackbar-button'
                     color="warning"
@@ -165,9 +167,9 @@ export function MessageSnackbar() {
                     {/* Header */}
                     <Box sx={{display: 'flex', alignItems: 'center', px: 1.5}}>
                         <Typography variant="subtitle1" sx={{fontSize: 12, flexGrow: 1, color: 'text.secondary'}}>
-                            system messages ({messages.length})
+                            {t('messages.systemMessagesWithCount', { count: messages.length })}
                         </Typography>
-                        <Tooltip title="clear all messages">
+                        <Tooltip title={t('messages.clearAllMessages')}>
                             <IconButton
                                 size="small"
                                 color="warning"
@@ -199,7 +201,7 @@ export function MessageSnackbar() {
                         }}
                     >
                         {messages.length == 0 && 
-                        <Typography fontSize={12} component="span" sx={{margin: "auto", m: 1, opacity: 0.7, fontStyle: 'italic'}}>There are no messages yet</Typography>}
+                        <Typography fontSize={12} component="span" sx={{margin: "auto", m: 1, opacity: 0.7, fontStyle: 'italic'}}>{t('messages.noMessages')}</Typography>}
                         {groupedMessages.map((msg, index) => (
                             <Alert icon={false} key={index} severity={msg.type} sx={{ 
                                 mb: 0.5, py: 0, px: 1,
@@ -250,7 +252,7 @@ export function MessageSnackbar() {
                                     {msg.detail && (
                                         <>
                                             <Divider textAlign="left" sx={{fontSize: 12, opacity: 0.7}}>
-                                                [details]
+                                                {t('messages.details')}
                                             </Divider>
                                             <Box sx={{ borderRadius: 1, position: 'relative' }}>
                                                 <Typography fontSize={12}>{msg.detail}</Typography>
@@ -260,7 +262,7 @@ export function MessageSnackbar() {
                                     {msg.code && (
                                         <>
                                             <Divider textAlign="left" sx={{my: 1, fontSize: 12, opacity: 0.7}}>
-                                                [generated code]
+                                                {t('messages.generatedCode')}
                                             </Divider>
                                             <Typography fontSize={10} component="span" sx={{opacity: 0.7}}>
                                                 <pre style={{ 
@@ -294,7 +296,7 @@ export function MessageSnackbar() {
                         <b>[{formatTimestamp(latestMessage.timestamp)}] ({latestMessage.component})</b> {latestMessage?.value}
                     </Typography> 
                     {latestMessage?.detail ? 
-                        <Divider textAlign="left" sx={{my: 1, fontSize: 12, opacity: 0.7}} > [details] </Divider>
+                        <Divider textAlign="left" sx={{my: 1, fontSize: 12, opacity: 0.7}} > {t('messages.details')} </Divider>
                     : ""}
                     {latestMessage?.detail ? 
                         <Box sx={{ borderRadius: 1, position: 'relative' }} >
@@ -302,7 +304,7 @@ export function MessageSnackbar() {
                         </Box>
                     : ""}
                     {latestMessage?.code ? 
-                        <Divider textAlign="left" sx={{my: 1, fontSize: 12, opacity: 0.7}} > [generated code] </Divider>
+                        <Divider textAlign="left" sx={{my: 1, fontSize: 12, opacity: 0.7}} > {t('messages.generatedCode')} </Divider>
                     : ""}
                     {latestMessage?.code ? 
                         <Typography fontSize={10} component="span" sx={{margin: "auto", opacity: 0.7}}>

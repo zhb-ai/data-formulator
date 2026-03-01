@@ -4,6 +4,8 @@
 import React, { FC, useEffect, useState } from 'react';
 import '../scss/App.scss';
 
+import { Trans, useTranslation } from 'react-i18next';
+
 import { useDispatch, useSelector } from "react-redux";
 import {
     DataFormulatorState,
@@ -110,9 +112,37 @@ declare module '@mui/material/styles' {
     }
 }
 
+const LanguageSwitcher: React.FC = () => {
+    const { i18n } = useTranslation();
+
+    return (
+        <ToggleButtonGroup
+            value={i18n.language.split('-')[0]}
+            exclusive
+            onChange={(_, value) => value && i18n.changeLanguage(value)}
+            size="small"
+            sx={{ 
+                height: '28px', 
+                my: 'auto',
+                mr: 1,
+                '& .MuiToggleButton-root': {
+                    textTransform: 'none',
+                    fontSize: '12px',
+                    py: 0,
+                    minWidth: '40px',
+                },
+            }}
+        >
+            <ToggleButton value="en">EN</ToggleButton>
+            <ToggleButton value="zh">中文</ToggleButton>
+        </ToggleButtonGroup>
+    );
+};
+
 export const ImportStateButton: React.FC<{}> = ({ }) => {
     const dispatch = useDispatch();
     const inputRef = React.useRef<HTMLInputElement>(null);
+    const { t } = useTranslation();
 
     const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>): void => {
         const files = event.target.files;
@@ -153,7 +183,7 @@ export const ImportStateButton: React.FC<{}> = ({ }) => {
                 inputRef={inputRef}
                 onChange={handleFileUpload}
             />
-            import session
+            {t('session.importSession')}
         </Button>
     );
 }
@@ -184,7 +214,9 @@ export const ExportStateButton: React.FC<{}> = ({ }) => {
         return JSON.stringify(stateToSerialize);
     });
 
-    return <Tooltip title="save session locally">
+    const { t } = useTranslation();
+
+    return <Tooltip title={t('session.saveSessionLocally')}>
         <Button 
             variant="text" 
             sx={{textTransform: 'none'}} 
@@ -201,7 +233,7 @@ export const ExportStateButton: React.FC<{}> = ({ }) => {
             }}
             startIcon={<DownloadIcon />}
         >
-            export session
+            {t('session.exportSession')}
         </Button>
     </Tooltip>
 }
@@ -217,6 +249,7 @@ export interface AppFCProps {
 // Extract menu components into separate components to prevent full app re-renders
 const TableMenu: React.FC = () => {
     const [dialogOpen, setDialogOpen] = useState<boolean>(false);
+    const { t } = useTranslation();
     
     return (
         <>
@@ -225,7 +258,7 @@ const TableMenu: React.FC = () => {
                 onClick={() => setDialogOpen(true)}
                 sx={{ textTransform: 'none' }}
             >
-                Data
+                {t('navigation.data')}
             </Button>
             
             {/* Unified Data Upload Dialog */}
@@ -244,6 +277,7 @@ const SessionMenu: React.FC = () => {
     const sessionId = useSelector((state: DataFormulatorState) => state.sessionId);
     const tables = useSelector((state: DataFormulatorState) => state.tables);
     const theme = useTheme();
+    const { t } = useTranslation();
     
     const dispatch = useDispatch();
     return (
@@ -254,7 +288,7 @@ const SessionMenu: React.FC = () => {
                 endIcon={<KeyboardArrowDownIcon />} 
                 sx={{ textTransform: 'none' }}
             >
-                Session
+                {t('appBar.session')}
             </Button>
             <Menu
                 id="session-menu"
@@ -273,24 +307,24 @@ const SessionMenu: React.FC = () => {
                 <MenuItem onClick={(e) => {}}>
                     <ImportStateButton />
                 </MenuItem>
-                <Divider><Typography variant="caption" sx={{ fontSize: 12, color: 'text.secondary' }}>database file</Typography></Divider>
+                <Divider><Typography variant="caption" sx={{ fontSize: 12, color: 'text.secondary' }}>{t('session.databaseFile')}</Typography></Divider>
                 {sessionId && tables.some(t => t.virtual) && 
                     <Typography fontSize="inherit" sx={{ color: theme.palette.warning.main, width: '160px', display: 'flex', alignItems: 'center', gap: 1, fontSize: 9 }}>
-                        This session contains data stored in the database, export and reload the database to resume the session later.
+                        {t('session.containsDatabaseWarning')}
                     </Typography>}
                 <MenuItem disabled={!sessionId || !tables.some(t => t.virtual)}  onClick={() => {
                     handleDBDownload(sessionId ?? '');
                 }}>
                     <Button startIcon={<DownloadIcon />}
                         sx={{ fontSize: 14, textTransform: 'none', display: 'flex', alignItems: 'center'}}>
-                        download database
+                        {t('session.downloadDatabase')}
                     </Button>
                 </MenuItem>
                 <MenuItem onClick={() => {}}>
                     <Button disabled={!sessionId} startIcon={<UploadIcon />} 
                         sx={{ fontSize: 14, textTransform: 'none', display: 'flex', alignItems: 'center'}}
                         component="label">
-                        import database
+                        {t('session.importDatabase')}
                         <input type="file" hidden accept=".db" onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (!file) return;
@@ -300,12 +334,12 @@ const SessionMenu: React.FC = () => {
                                 const response = await fetch(getUrls().UPLOAD_DB_FILE, { method: 'POST', body: formData });
                                 const data = await response.json();
                                 if (data.status === 'success') {
-                                    dispatch(dfActions.addMessages({ timestamp: Date.now(), component: "DB Manager", type: "success", value: "Database imported successfully" }));
+                                    dispatch(dfActions.addMessages({ timestamp: Date.now(), component: "DB Manager", type: "success", value: t('session.databaseImportedSuccess') }));
                                 } else {
-                                    dispatch(dfActions.addMessages({ timestamp: Date.now(), component: "DB Manager", type: "error", value: data.message || 'Import failed' }));
+                                    dispatch(dfActions.addMessages({ timestamp: Date.now(), component: "DB Manager", type: "error", value: data.message || t('session.importFailed') }));
                                 }
                             } catch (error) {
-                                dispatch(dfActions.addMessages({ timestamp: Date.now(), component: "DB Manager", type: "error", value: 'Import failed' }));
+                                dispatch(dfActions.addMessages({ timestamp: Date.now(), component: "DB Manager", type: "error", value: t('session.importFailed') }));
                             }
                             e.target.value = '';
                         }} />
@@ -320,6 +354,7 @@ const SessionMenu: React.FC = () => {
 const ResetDialog: React.FC = () => {
     const [open, setOpen] = useState(false);
     const dispatch = useDispatch();
+    const { t } = useTranslation();
 
     return (
         <>
@@ -329,13 +364,13 @@ const ResetDialog: React.FC = () => {
                 onClick={() => setOpen(true)} 
                 endIcon={<PowerSettingsNewIcon />}
             >
-                Reset
+                {t('app.reset')}
             </Button>
             <Dialog onClose={() => setOpen(false)} open={open}>
-                <DialogTitle sx={{ display: "flex", alignItems: "center" }}>Reset Session?</DialogTitle>
+                <DialogTitle sx={{ display: "flex", alignItems: "center" }}>{t('session.resetSessionTitle')}</DialogTitle>
                 <DialogContent>
                     <DialogContentText>
-                        All unexported content (charts, derived data, concepts) will be lost upon reset.
+                        {t('session.resetSessionWarning')}
                     </DialogContentText>
                 </DialogContent>
                 <DialogActions>
@@ -351,9 +386,9 @@ const ResetDialog: React.FC = () => {
                         }} 
                         endIcon={<PowerSettingsNewIcon />}
                     >
-                        reset session 
+                        {t('session.resetSessionAction')}
                     </Button>
-                    <Button onClick={() => setOpen(false)}>cancel</Button>
+                    <Button onClick={() => setOpen(false)}>{t('app.cancel')}</Button>
                 </DialogActions>
             </Dialog>
         </>
@@ -364,6 +399,7 @@ const ConfigDialog: React.FC = () => {
     const [open, setOpen] = useState(false);
     const dispatch = useDispatch();
     const config = useSelector((state: DataFormulatorState) => state.config);
+    const { t } = useTranslation();
 
 
     const [formulateTimeoutSeconds, setFormulateTimeoutSeconds] = useState(config.formulateTimeoutSeconds);
@@ -381,10 +417,10 @@ const ConfigDialog: React.FC = () => {
     return (
         <>
             <Button variant="text" sx={{textTransform: 'none'}} onClick={() => setOpen(true)} startIcon={<SettingsIcon />}>
-                Settings
+                {t('app.settings')}
             </Button>
             <Dialog onClose={() => setOpen(false)} open={open}>
-                <DialogTitle>Settings</DialogTitle>
+                <DialogTitle>{t('app.settings')}</DialogTitle>
                 <DialogContent>
                     <Box sx={{ 
                         display: 'flex', 
@@ -392,11 +428,11 @@ const ConfigDialog: React.FC = () => {
                         gap: 3,
                         maxWidth: 400
                     }}>
-                        <Divider><Typography variant="caption">Frontend</Typography></Divider>
+                        <Divider><Typography variant="caption">{t('config.frontend')}</Typography></Divider>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <Box sx={{ flex: 1 }}>
                                 <TextField
-                                    label="default chart width"
+                                    label={t('config.defaultChartWidth')}
                                     type="number"
                                     variant="outlined"
                                     value={defaultChartWidth}
@@ -415,7 +451,7 @@ const ConfigDialog: React.FC = () => {
                                     }}
                                     error={defaultChartWidth < 100 || defaultChartWidth > 1000}
                                     helperText={defaultChartWidth < 100 || defaultChartWidth > 1000 ? 
-                                        "Value must be between 100 and 1000 pixels" : ""}
+                                        t('config.chartSizeRangeError') : ""}
                                 />
                             </Box>
                             <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
@@ -423,7 +459,7 @@ const ConfigDialog: React.FC = () => {
                             </Typography>
                             <Box sx={{ flex: 1 }}>
                                 <TextField
-                                    label="default chart height"
+                                    label={t('config.defaultChartHeight')}
                                     type="number"
                                     variant="outlined"
                                     value={defaultChartHeight}
@@ -442,15 +478,15 @@ const ConfigDialog: React.FC = () => {
                                     }}
                                     error={defaultChartHeight < 100 || defaultChartHeight > 1000}
                                     helperText={defaultChartHeight < 100 || defaultChartHeight > 1000 ? 
-                                        "Value must be between 100 and 1000 pixels" : ""}
+                                        t('config.chartSizeRangeError') : ""}
                                 />
                             </Box>
                         </Box>
-                        <Divider><Typography variant="caption">Backend</Typography></Divider>
+                        <Divider><Typography variant="caption">{t('config.backend')}</Typography></Divider>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <Box sx={{ flex: 1 }}>
                                 <TextField
-                                    label="formulate timeout (seconds)"
+                                    label={t('config.formulateTimeout')}
                                     type="number"
                                     variant="outlined"
                                     value={formulateTimeoutSeconds}
@@ -464,18 +500,18 @@ const ConfigDialog: React.FC = () => {
                                     }}
                                     error={formulateTimeoutSeconds <= 0 || formulateTimeoutSeconds > 3600}
                                     helperText={formulateTimeoutSeconds <= 0 || formulateTimeoutSeconds > 3600 ? 
-                                        "Value must be between 1 and 3600 seconds" : ""}
+                                        t('config.formulateTimeoutRangeError') : ""}
                                     fullWidth
                                 />
                                 <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                                    Maximum time allowed for the formulation process before timing out. 
+                                    {t('config.formulateTimeoutHint')}
                                 </Typography>
                             </Box>
                         </Box>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <Box sx={{ flex: 1 }}>
                                 <TextField
-                                    label="max repair attempts"
+                                    label={t('config.maxRepairAttempts')}
                                     type="number"
                                     variant="outlined"
                                     value={maxRepairAttempts}
@@ -494,10 +530,10 @@ const ConfigDialog: React.FC = () => {
                                     }}
                                     error={maxRepairAttempts <= 0 || maxRepairAttempts > 5}
                                     helperText={maxRepairAttempts <= 0 || maxRepairAttempts > 5 ? 
-                                        "Value must be between 1 and 5" : ""}
+                                        t('config.maxRepairAttemptsRangeError') : ""}
                                 />
                                 <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                                    How many attempts LLM will make to repair code if code fails to execute (recommended = 1, higher values might increase the chance of success but it's slow).
+                                    {t('config.maxRepairAttemptsHint')}
                                 </Typography>
                             </Box>
                         </Box>
@@ -509,8 +545,8 @@ const ConfigDialog: React.FC = () => {
                         setMaxRepairAttempts(1);
                         setDefaultChartWidth(300);
                         setDefaultChartHeight(300);
-                    }}>Reset to default</Button>
-                    <Button onClick={() => setOpen(false)}>Cancel</Button>
+                    }}>{t('session.resetToDefault')}</Button>
+                    <Button onClick={() => setOpen(false)}>{t('app.cancel')}</Button>
                     <Button 
                         variant={hasChanges ? "contained" : "text"}
                         disabled={!hasChanges || isNaN(maxRepairAttempts) || maxRepairAttempts <= 0 || maxRepairAttempts > 5 
@@ -522,7 +558,7 @@ const ConfigDialog: React.FC = () => {
                             setOpen(false);
                         }}
                     >
-                        Apply
+                        {t('app.apply')}
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -537,6 +573,7 @@ export const AppFC: FC<AppFCProps> = function AppFC(appProps) {
     const generatedReports = useSelector((state: DataFormulatorState) => state.generatedReports);
     const focusedTableId = useSelector((state: DataFormulatorState) => state.focusedTableId);
     const serverConfig = useSelector((state: DataFormulatorState) => state.serverConfig);
+    const { t } = useTranslation();
 
     useEffect(() => {
         fetch(getUrls().APP_CONFIG)
@@ -669,7 +706,7 @@ export const AppFC: FC<AppFCProps> = function AppFC(appProps) {
                             },
                         }}
                     >
-                        About
+                        {t('navigation.about')}
                     </Button>
                     <Button 
                         component="a" 
@@ -692,11 +729,12 @@ export const AppFC: FC<AppFCProps> = function AppFC(appProps) {
                             },
                         }}
                     >
-                        App
+                        {t('navigation.home')}
                     </Button>
                 </Box>
                 {!isAboutPage && (
                     <Box sx={{ display: 'flex', ml: 'auto', fontSize: 14 }}>
+                        <LanguageSwitcher />
                         {focusedTableId !== undefined && <React.Fragment><ToggleButtonGroup
                             value={viewMode}
                             exclusive
@@ -722,13 +760,15 @@ export const AppFC: FC<AppFCProps> = function AppFC(appProps) {
                         >
                             <ToggleButton value="editor">
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <Box component="span">Explore</Box>
+                                    <Box component="span">{t('appBar.explore')}</Box>
                                 </Box>
                             </ToggleButton>
                             <ToggleButton value="report">
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                     <Box component="span">
-                                        {generatedReports.length > 0 ? `Reports (${generatedReports.length})` : 'Reports'}
+                                        {generatedReports.length > 0
+                                            ? t('appBar.reportsWithCount', { count: generatedReports.length })
+                                            : t('appBar.reports')}
                                     </Box>
                                 </Box>
                             </ToggleButton>
@@ -752,13 +792,14 @@ export const AppFC: FC<AppFCProps> = function AppFC(appProps) {
                 )}
                 {isAboutPage && (
                     <Box sx={{ ml: 'auto', display: 'flex', gap: 0.5 }}>
-                        <Tooltip title="Watch Video">
+                        <LanguageSwitcher />
+                        <Tooltip title={t('appBar.watchVideo')}>
                             <IconButton
                                 component="a"
                                 href="https://youtu.be/3ndlwt0Wi3c"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                aria-label="Watch Video"
+                                aria-label={t('appBar.watchVideo')}
                                 sx={{ 
                                     color: 'inherit',
                                     '&:hover': {
@@ -769,13 +810,13 @@ export const AppFC: FC<AppFCProps> = function AppFC(appProps) {
                                 <YouTubeIcon fontSize="small" />
                             </IconButton>
                         </Tooltip>
-                        <Tooltip title="View on GitHub">
+                        <Tooltip title={t('appBar.viewOnGitHub')}>
                             <IconButton
                                 component="a"
                                 href="https://github.com/microsoft/data-formulator"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                aria-label="View on GitHub"
+                                aria-label={t('appBar.viewOnGitHub')}
                                 sx={{ 
                                     color: 'inherit',
                                     '&:hover': {
@@ -786,13 +827,13 @@ export const AppFC: FC<AppFCProps> = function AppFC(appProps) {
                                 <GitHubIcon fontSize="small" />
                             </IconButton>
                         </Tooltip>
-                        <Tooltip title="Pip Install">
+                        <Tooltip title={t('appBar.pipInstall')}>
                             <IconButton
                                 component="a"
                                 href="https://pypi.org/project/data-formulator/"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                aria-label="Pip Install"
+                                aria-label={t('appBar.pipInstall')}
                                 sx={{ 
                                     color: 'inherit',
                                     '&:hover': {
@@ -803,13 +844,13 @@ export const AppFC: FC<AppFCProps> = function AppFC(appProps) {
                                 <Box component="img" src="/pip-logo.svg" sx={{ width: 20, height: 20 }} alt="pip logo" />
                             </IconButton>
                         </Tooltip>
-                        <Tooltip title="Join Discord">
+                        <Tooltip title={t('appBar.joinDiscord')}>
                             <IconButton
                                 component="a"
                                 href="https://discord.gg/mYCZMQKYZb"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                aria-label="Join Discord"
+                                aria-label={t('appBar.joinDiscord')}
                                 sx={{ 
                                     color: 'inherit',
                                     '&:hover': {
@@ -823,7 +864,7 @@ export const AppFC: FC<AppFCProps> = function AppFC(appProps) {
                     </Box>
                 )}
                 {!isAboutPage && (
-                    <Tooltip title="View on GitHub">
+                    <Tooltip title={t('appBar.viewOnGitHub')}>
                         <Button
                             component="a"
                             href="https://github.com/microsoft/data-formulator"
@@ -856,7 +897,9 @@ export const AppFC: FC<AppFCProps> = function AppFC(appProps) {
             path: "*",
             element: <DataFormulatorFC />,
             errorElement: <Box sx={{ width: "100%", height: "100%", display: "flex" }}>
-                <Typography color="gray" sx={{ margin: "150px auto" }}>An error has occurred, please <Link href="/">refresh the session</Link>. If the problem still exists, click close session.</Typography>
+                <Typography color="gray" sx={{ margin: "150px auto" }}>
+                    <Trans i18nKey="appBar.errorOccurred" components={{ refreshAction: <Link href="/" /> }} />
+                </Typography>
             </Box>
         }
     ]);

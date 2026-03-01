@@ -28,10 +28,13 @@ import CasinoIcon from '@mui/icons-material/Casino';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import CheckIcon from '@mui/icons-material/Check';
 import { getUrls } from '../app/utils';
 import { useDrag } from 'react-dnd';
 import { useSelector } from 'react-redux';
 import { DataFormulatorState } from '../app/dfSlice';
+import { useTranslation } from 'react-i18next';
 
 export interface ColumnDef {
     id: string;
@@ -105,6 +108,9 @@ const DraggableHeader: React.FC<DraggableHeaderProps> = ({
     columnDef, orderBy, order, onSortClick, tableId 
 }) => {
     const theme = useTheme();
+    const { t } = useTranslation();
+    const [isHeaderHovered, setIsHeaderHovered] = React.useState<boolean>(false);
+    const [copied, setCopied] = React.useState<boolean>(false);
     const conceptShelfItems = useSelector((state: DataFormulatorState) => state.conceptShelfItems);
     
     // Find the corresponding FieldItem for this column
@@ -156,10 +162,41 @@ const DraggableHeader: React.FC<DraggableHeaderProps> = ({
             : <ArrowDownwardIcon sx={{ fontSize: 16 }} />;
     };
 
+    const copyToClipboard = async (text: string) => {
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            return;
+        }
+
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        textArea.style.top = '0';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+    };
+
+    const onCopyHeader = async (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.stopPropagation();
+        try {
+            await copyToClipboard(columnDef.label);
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 1200);
+        } catch (err) {
+            console.error('Failed to copy header text:', err);
+        }
+    };
+
     return (
         <Box 
             className="data-view-header-container" 
             ref={field ? dragSource : dragPreview}
+            onMouseEnter={() => setIsHeaderHovered(true)}
+            onMouseLeave={() => setIsHeaderHovered(false)}
             sx={{ 
                 backgroundColor: backgroundColor, 
                 borderBottomColor, 
@@ -190,7 +227,7 @@ const DraggableHeader: React.FC<DraggableHeaderProps> = ({
                     display: "flex", 
                     flexDirection: "row", 
                     flex: 1,
-                    width: 'calc(100% - 24px)',
+                    minWidth: 0,
                     cursor: cursorStyle, // Inherit cursor from parent
                     '& .MuiTableSortLabel-icon': {
                         display: 'none',
@@ -214,7 +251,7 @@ const DraggableHeader: React.FC<DraggableHeaderProps> = ({
                 </Typography>
             </TableSortLabel>
             {/* Separate sort handler button */}
-            <Tooltip title={<Typography sx={{fontSize: 10}}>Sort by <b>{columnDef.label}</b></Typography>}>
+            <Tooltip title={<Typography sx={{fontSize: 10}}>{t('messages.sortBy', { label: columnDef.label })}</Typography>}>
                 <IconButton
                     size="small"
                     onClick={(e) => {
@@ -235,6 +272,27 @@ const DraggableHeader: React.FC<DraggableHeaderProps> = ({
                     {getSortIcon()}
                 </IconButton>
             </Tooltip>
+            <Tooltip title={<Typography sx={{fontSize: 10}}>{copied ? t('messages.columnNameCopied', { label: columnDef.label }) : t('messages.copyColumnName', { label: columnDef.label })}</Typography>}>
+                <IconButton
+                    size="small"
+                    onClick={onCopyHeader}
+                    sx={{
+                        padding: '2px',
+                        marginLeft: '2px',
+                        marginRight: '2px',
+                        opacity: copied ? 1 : (isHeaderHovered ? 0.65 : 0),
+                        pointerEvents: copied || isHeaderHovered ? 'auto' : 'none',
+                        color: copied ? theme.palette.success.main : 'inherit',
+                        transition: 'opacity 0.15s ease',
+                        '&:hover': {
+                            opacity: 1,
+                            backgroundColor: alpha(theme.palette.action.hover, 0.2),
+                        },
+                    }}
+                >
+                    {copied ? <CheckIcon sx={{ fontSize: 15 }} /> : <ContentCopyIcon sx={{ fontSize: 14 }} />}
+                </IconButton>
+            </Tooltip>
         </Box>
     );
 };
@@ -246,6 +304,7 @@ export const SelectableDataGrid: React.FC<SelectableDataGridProps> = ({
     const [order, setOrder] = React.useState<'asc' | 'desc'>('asc');
 
     let theme = useTheme();
+    const { t } = useTranslation();
 
     const [rowsToDisplay, setRowsToDisplay] = React.useState<any[]>(rows);
     
@@ -349,7 +408,7 @@ export const SelectableDataGrid: React.FC<SelectableDataGridProps> = ({
                     borderTopRightRadius: '4px'
                 }}>
                     <CircularProgress size={24} sx={{ mr: 1, color: 'lightgray' }} />
-                    <Typography variant="body2" color="text.secondary">Loading ...</Typography>
+                    <Typography variant="body2" color="text.secondary">{t('messages.loading')}</Typography>
                 </Box>
             )}
             <Fade in={!isLoading} timeout={{appear: 300, enter: 300, exit: 2000}}>
@@ -432,10 +491,10 @@ export const SelectableDataGrid: React.FC<SelectableDataGridProps> = ({
                 <Box sx={{display: 'flex', alignItems: 'center', mx: 1}}>
                     <Typography sx={{display: 'flex', alignItems: 'center', fontSize: '12px'}}>
                         {virtual && <CloudQueueIcon sx={{fontSize: 16, mr: 1}}/> }
-                        {`${rowCount} rows`}
+                        {t('messages.rowsWithCount', { count: rowCount })}
                     </Typography>
                     {virtual && rowCount > 10000 && (
-                        <Tooltip title="view 10000 random rows from this table">
+                        <Tooltip title={t('messages.randomRowsTooltip')}>
                             <IconButton 
                                 size="small" 
                                 color="primary" 

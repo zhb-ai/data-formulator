@@ -1,0 +1,34 @@
+{
+  "upload": {
+    "title": "加载数据",
+    "sampleDatasets": "示例数据集",
+    "sampleDatasetsDesc": "浏览并加载精选的示例数据集",
+    "uploadFile": "上传文件",
+    "uploadFileDesc": "上传本地文件（CSV、TSV、JSON、Excel）",
+    "pasteData": "粘贴数据",
+    "pasteDataDesc": "直接从剪贴板粘贴表格数据",
+    "extractData": "提取非结构化数据",
+    "extractDataDesc": "使用 AI 从图片或文本中提取表格",
+    "loadFromUrl": "从 URL 加载",
+    "loadFromUrlDesc": "从 URL 加载数据，支持自动刷新",
+    "database": "数据库",
+    "databaseDesc": "连接数据库或数据服务",
+    "databaseDisabled": "此环境中数据库连接已禁用",
+    "dragDrop": "拖放文件到此处",
+    "orBrowse": "或浏览",
+    "supportedFormats": "支持的格式：CSV、TSV、JSON、Excel",
+    "placeholder": {
+      "url": "输入 URL：https://example.com/data.json 或 /api/data",
+      "paste": "在此粘贴数据（CSV、TSV 或 JSON 格式）"
+    },
+    "helperText": {
+      "urlInvalid": "请输入以 http://、https:// 或 / 开头的有效 URL"
+    },
+    "resetExtraction": "重置提取",
+    "autoRefresh": "自动刷新",
+    "refreshInterval": "刷新间隔",
+    "seconds": "秒",
+    "liveData": "实时数据",
+    "from": "来自"
+  }
+}

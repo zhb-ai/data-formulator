@@ -26,6 +26,7 @@ import { useSelector } from 'react-redux';
 import { DataFormulatorState } from '../app/dfSlice';
 import { DictTable } from '../components/ComponentType';
 import { createTableFromText, loadTextDataWrapper, loadBinaryDataWrapper } from '../data/utils';
+import { useTranslation } from 'react-i18next';
 
 interface TabPanelProps {
     children?: React.ReactNode;
@@ -62,6 +63,7 @@ export const RefreshDataDialog: React.FC<RefreshDataDialogProps> = ({
     onRefreshComplete,
 }) => {
     const theme = useTheme();
+    const { t } = useTranslation();
     const [tabValue, setTabValue] = useState(0);
     const [pasteContent, setPasteContent] = useState('');
     const [urlContent, setUrlContent] = useState('');
@@ -355,7 +357,7 @@ export const RefreshDataDialog: React.FC<RefreshDataDialogProps> = ({
         >
             <DialogTitle sx={{ display: 'flex', alignItems: 'center', pb: 1 }}>
                 <Typography variant="h6" component="span">
-                    Refresh Data for "{table.displayId || table.id}"
+                    {t('refresh.titleForTable', { table: table.displayId || table.id })}
                 </Typography>
                 <IconButton
                     sx={{ marginLeft: 'auto' }}
@@ -377,7 +379,7 @@ export const RefreshDataDialog: React.FC<RefreshDataDialogProps> = ({
                             lineHeight: 1.5
                         }}
                     >
-                        Upload new data to replace the current table content. Required columns: <strong style={{ color: 'inherit' }}>{table.names.join(', ')}</strong>
+                        {t('refresh.description')} <strong style={{ color: 'inherit' }}>{table.names.join(', ')}</strong>
                     </Typography>
 
                     {error && (
@@ -400,9 +402,9 @@ export const RefreshDataDialog: React.FC<RefreshDataDialogProps> = ({
                 </Box>
 
                 <Tabs value={tabValue} onChange={handleTabChange} sx={{ borderBottom: 1, borderColor: 'divider', px: 3 }}>
-                    <Tab label="Paste Data" sx={{ textTransform: 'none', fontSize: '0.875rem', minHeight: 48 }} />
-                    <Tab label="Upload File" sx={{ textTransform: 'none', fontSize: '0.875rem', minHeight: 48 }} />
-                    <Tab label="From URL" sx={{ textTransform: 'none', fontSize: '0.875rem', minHeight: 48 }} />
+                    <Tab label={t('refresh.pasteData')} sx={{ textTransform: 'none', fontSize: '0.875rem', minHeight: 48 }} />
+                    <Tab label={t('refresh.uploadFile')} sx={{ textTransform: 'none', fontSize: '0.875rem', minHeight: 48 }} />
+                    <Tab label={t('refresh.fromUrl')} sx={{ textTransform: 'none', fontSize: '0.875rem', minHeight: 48 }} />
                 </Tabs>
 
                 <TabPanel value={tabValue} index={0}>
@@ -432,7 +434,7 @@ export const RefreshDataDialog: React.FC<RefreshDataDialogProps> = ({
                                 border: `1px solid ${alpha(theme.palette.divider, 0.5)}`
                             }}>
                                 <Typography variant="caption" sx={{ flex: 1, fontSize: '0.75rem', color: 'text.secondary' }}>
-                                    Large content ({Math.round(pasteContent.length / 1000)}KB) • {showFullContent ? 'Full view' : 'Preview'}
+                                    {t('refresh.largeContent', { sizeKb: Math.round(pasteContent.length / 1000), mode: showFullContent ? t('refresh.full') : t('refresh.preview') })}
                                 </Typography>
                                 <Button 
                                     size="small" 
@@ -448,7 +450,7 @@ export const RefreshDataDialog: React.FC<RefreshDataDialogProps> = ({
                                         }
                                     }}
                                 >
-                                    {showFullContent ? 'Preview' : 'Full'}
+                                    {showFullContent ? t('refresh.preview') : t('refresh.full')}
                                 </Button>
                             </Box>
                         )}
@@ -458,7 +460,7 @@ export const RefreshDataDialog: React.FC<RefreshDataDialogProps> = ({
                             fullWidth
                             value={displayContent}
                             onChange={handlePasteContentChange}
-                            placeholder="Paste your data here (CSV, TSV, or JSON format)"
+                            placeholder={t('upload.placeholder.paste')}
                             disabled={isLoading}
                             sx={{
                                 '& .MuiInputBase-root': {
@@ -479,10 +481,10 @@ export const RefreshDataDialog: React.FC<RefreshDataDialogProps> = ({
                     {serverConfig.DISABLE_FILE_UPLOAD ? (
                         <Box sx={{ textAlign: 'center', py: 6 }}>
                             <Typography color="text.secondary" sx={{ mb: 1.5, fontSize: '0.875rem' }}>
-                                File upload is disabled in this environment.
+                                {t('refresh.fileUploadDisabled')}
                             </Typography>
                             <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                                Install Data Formulator locally to enable file upload. <br />
+                                {t('refresh.installLocallyForUpload')} <br />
                                 <Link 
                                     href="https://github.com/microsoft/data-formulator" 
                                     target="_blank" 
@@ -520,13 +522,13 @@ export const RefreshDataDialog: React.FC<RefreshDataDialogProps> = ({
                             >
                                 <UploadFileIcon sx={{ fontSize: 40, color: 'text.secondary', mb: 1.5 }} />
                                 <Typography variant="subtitle1" gutterBottom sx={{ fontSize: '0.9375rem', fontWeight: 500 }}>
-                                    Drag & drop file here
+                                    {t('refresh.dragDropFile')}
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8125rem', mb: 0.5 }}>
-                                    or <Link component="button" sx={{ textDecoration: 'underline', cursor: 'pointer' }}>Browse</Link>
+                                    {t('refresh.orBrowse')} <Link component="button" sx={{ textDecoration: 'underline', cursor: 'pointer' }}>{t('refresh.browse')}</Link>
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                                    Supported: CSV, TSV, JSON, Excel (xlsx, xls)
+                                    {t('refresh.supportedFormats')}
                                 </Typography>
                             </Box>
                         </Box>
@@ -536,12 +538,12 @@ export const RefreshDataDialog: React.FC<RefreshDataDialogProps> = ({
                 <TabPanel value={tabValue} index={2}>
                     <TextField
                         fullWidth
-                        placeholder="Load a CSV, TSV, or JSON file from a URL, e.g. https://example.com/data.json"
+                        placeholder={t('refresh.urlPlaceholder')}
                         value={urlContent}
                         onChange={(e) => setUrlContent(e.target.value.trim())}
                         disabled={isLoading}
                         error={urlContent !== '' && !hasValidUrlSuffix}
-                        helperText={urlContent !== '' && !hasValidUrlSuffix ? 'URL should link to a .csv, .tsv, or .json file' : ''}
+                        helperText={urlContent !== '' && !hasValidUrlSuffix ? t('refresh.urlSuffixHelper') : ''}
                         size="small"
                         sx={{ 
                             '& .MuiInputBase-input': {
@@ -563,7 +565,7 @@ export const RefreshDataDialog: React.FC<RefreshDataDialogProps> = ({
                     disabled={isLoading}
                     sx={{ textTransform: 'none' }}
                 >
-                    Cancel
+                    {t('app.cancel')}
                 </Button>
                 {tabValue === 0 && (
                     <Button
@@ -572,7 +574,7 @@ export const RefreshDataDialog: React.FC<RefreshDataDialogProps> = ({
                         disabled={isLoading || !pasteContent.trim() || isOverSizeLimit}
                         sx={{ textTransform: 'none' }}
                     >
-                        Refresh Data
+                        {t('refresh.refreshData')}
                     </Button>
                 )}
                 {tabValue === 2 && (
@@ -582,7 +584,7 @@ export const RefreshDataDialog: React.FC<RefreshDataDialogProps> = ({
                         disabled={isLoading || !urlContent.trim() || !hasValidUrlSuffix}
                         sx={{ textTransform: 'none' }}
                     >
-                        Refresh Data
+                        {t('refresh.refreshData')}
                     </Button>
                 )}
             </DialogActions>

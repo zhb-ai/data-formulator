@@ -1,0 +1,34 @@
+{
+  "upload": {
+    "title": "Load Data",
+    "sampleDatasets": "Sample Datasets",
+    "sampleDatasetsDesc": "Explore and load curated example datasets",
+    "uploadFile": "Upload File",
+    "uploadFileDesc": "Upload local files (CSV, TSV, JSON, Excel)",
+    "pasteData": "Paste Data",
+    "pasteDataDesc": "Paste tabular data directly from clipboard",
+    "extractData": "Extract Unstructured Data",
+    "extractDataDesc": "Extract tables from images or text using AI",
+    "loadFromUrl": "Load from URL",
+    "loadFromUrlDesc": "Load data from a URL with optional auto-refresh",
+    "database": "Database",
+    "databaseDesc": "Connect to databases or data services",
+    "databaseDisabled": "Database connection is disabled in this environment",
+    "dragDrop": "Drag & drop files here",
+    "orBrowse": "or Browse",
+    "supportedFormats": "Supported formats: CSV, TSV, JSON, Excel",
+    "placeholder": {
+      "url": "Enter URL: https://example.com/data.json or /api/data",
+      "paste": "Paste your data here (CSV, TSV, or JSON format)"
+    },
+    "helperText": {
+      "urlInvalid": "Enter a valid URL starting with http://, https://, or /"
+    },
+    "resetExtraction": "Reset extraction",
+    "autoRefresh": "Auto-refresh",
+    "refreshInterval": "Refresh interval",
+    "seconds": "seconds",
+    "liveData": "Live data",
+    "from": "from"
+  }
+}

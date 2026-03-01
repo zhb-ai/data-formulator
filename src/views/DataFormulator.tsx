@@ -44,6 +44,7 @@ import { UnifiedDataUploadDialog, UploadTabType, DataLoadMenu } from './UnifiedD
 import { ReportView } from './ReportView';
 import { ExampleSession, exampleSessions, ExampleSessionCard } from './ExampleSessions';
 import { useDataRefresh, useDerivedTableRefresh } from '../app/useDataRefresh';
+import { useTranslation } from 'react-i18next';
 
 export const DataFormulatorFC = ({ }) => {
 
@@ -55,6 +56,7 @@ export const DataFormulatorFC = ({ }) => {
     const theme = useTheme();
 
     const dispatch = useDispatch();
+    const { t } = useTranslation();
     
     // Set up automatic refresh of derived tables when source data changes
     useDerivedTableRefresh();
@@ -73,7 +75,7 @@ export const DataFormulatorFC = ({ }) => {
             timestamp: Date.now(),
             type: 'info',
             component: 'data formulator',
-            value: `Loading example session: ${session.title}`,
+            value: t('messages.loadingExample', { title: session.title }),
         }));
         
         // Load the complete state from the JSON file
@@ -87,7 +89,7 @@ export const DataFormulatorFC = ({ }) => {
                     timestamp: Date.now(),
                     type: 'success',
                     component: 'data formulator',
-                    value: `Successfully loaded ${session.title}`,
+                    value: t('messages.loadSuccess', { title: session.title }),
                 }));
             })
             .catch(error => {
@@ -96,7 +98,7 @@ export const DataFormulatorFC = ({ }) => {
                     timestamp: Date.now(),
                     type: 'error',
                     component: 'data formulator',
-                    value: `Failed to load ${session.title}: ${error.message}`,
+                    value: t('messages.loadFailed', { title: session.title, error: error.message }),
                 }));
             });
     };
@@ -243,17 +245,20 @@ export const DataFormulatorFC = ({ }) => {
         <Button size="small" color="inherit" 
             sx={{ textTransform: 'none'}} 
             target="_blank" rel="noopener noreferrer" 
-            href="https://www.microsoft.com/en-us/privacy/privacystatement">Privacy & Cookies</Button>
+            aria-label={t('footer.privacyCookiesAria')}
+            href="https://www.microsoft.com/en-us/privacy/privacystatement">{t('footer.privacyCookies')}</Button>
         <Divider orientation="vertical" variant="middle" flexItem sx={{ mx: 1 }} />
         <Button size="small" color="inherit" 
             sx={{ textTransform: 'none'}} 
             target="_blank" rel="noopener noreferrer" 
-            href="https://www.microsoft.com/en-us/legal/intellectualproperty/copyright">Terms of Use</Button>
+            aria-label={t('footer.termsOfUseAria')}
+            href="https://www.microsoft.com/en-us/legal/intellectualproperty/copyright">{t('footer.termsOfUse')}</Button>
         <Divider orientation="vertical" variant="middle" flexItem sx={{ mx: 1 }} />
         <Button size="small" color="inherit" 
             sx={{ textTransform: 'none'}} 
             target="_blank" rel="noopener noreferrer" 
-            href="https://github.com/microsoft/data-formulator/issues">Contact Us</Button>
+            aria-label={t('footer.contactUsAria')}
+            href="https://github.com/microsoft/data-formulator/issues">{t('footer.contactUs')}</Button>
         <Typography sx={{ display: 'inline', fontSize: '12px', ml: 1 }}> @ {new Date().getFullYear()}</Typography>
     </Box>
 
@@ -273,7 +278,7 @@ export const DataFormulatorFC = ({ }) => {
             <Typography sx={{ 
                 fontSize: 24, color: theme.palette.text.secondary, 
                 textAlign: 'center', mb: 4}}>
-                Explore data with visualizations, powered by AI agents. 
+                {t('landing.tagline')}
             </Typography>
             <Box sx={{my: 4}}>
                 <DataLoadMenu 
@@ -290,7 +295,7 @@ export const DataFormulatorFC = ({ }) => {
             <Box sx={{mt: 4}}>
                 <Divider sx={{width: '200px', mx: 'auto', mb: 3, fontSize: '1.2rem'}}>
                     <Typography sx={{ color: 'text.secondary' }}>
-                        demos
+                        {t('landing.demos')}
                     </Typography>
                 </Divider>
                 <Box sx={{
@@ -335,9 +340,9 @@ export const DataFormulatorFC = ({ }) => {
                                 {toolName}
                             </Typography>
                             <Typography  variant="h4" sx={{mt: 3, fontSize: 28, letterSpacing: '0.02em'}}>
-                                First, let's <ModelSelectionButton />
+                                {t('landing.firstSelectModelPrefix')} <ModelSelectionButton />
                             </Typography>
-                            <Typography  color="text.secondary" variant="body1" sx={{mt: 2, width: 600}}>💡 Models with strong code generation capabilities (e.g., gpt-5, claude-sonnet-4-5) provide best experience with Data Formulator.</Typography>
+                            <Typography  color="text.secondary" variant="body1" sx={{mt: 2, width: 600}}>💡 {t('landing.modelTip')}</Typography>
                         </Box>
                         {footer}
                     </Box>

@@ -1,0 +1,32 @@
+{
+  "encoding": {
+    "dataType": "Data Type",
+    "stack": "Stack",
+    "sortBy": "Sort By",
+    "sortOrder": "Sort Order",
+    "colorScheme": "Color scheme",
+    "smartSort": "infer smart sort order",
+    "ascending": "Ascending",
+    "descending": "Descending",
+    "normalize": "Normalize",
+    "aggregate": "Aggregate",
+    "bin": "Bin",
+    "field": "Field",
+    "channel": "Channel",
+    "xAxis": "X Axis",
+    "yAxis": "Y Axis",
+    "color": "Color",
+    "size": "Size",
+    "shape": "Shape",
+    "tooltip": "Tooltip",
+    "auto": "auto",
+    "default": "default",
+    "layered": "layered",
+    "center": "center",
+    "rerunSmartSort": "rerun smart sort",
+    "fieldPlaceholder": "field",
+    "newFieldNamePlaceholder": "type a new field name",
+    "createNewFieldGroup": "create a new field",
+    "axisSettings": "axis settings"
+  }
+}

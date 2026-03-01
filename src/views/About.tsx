@@ -11,6 +11,7 @@ import PrecisionManufacturingIcon from '@mui/icons-material/PrecisionManufacturi
 import { toolName } from "../app/App";
 import { useSelector } from "react-redux";
 import { DataFormulatorState } from "../app/dfSlice";
+import { useTranslation } from "react-i18next";
 
 
 interface Feature {
@@ -20,43 +21,31 @@ interface Feature {
     mediaType: 'image' | 'video';
 }
 
-const features: Feature[] = [
-    {
-        title: "Load (Almost) Any Data",
-        description: "Load structured data, connect to databases. Ask AI agents to extract and clean (small) ad-hoc data from screenshots, text blocks.",
-        media: "/feature-extract-data.mp4",
-        mediaType: "video"
-    },
-    {
-        title: "Agent Mode",
-        description: "Vibe with your data. Hands-off and let agents automatically explore and visualize data from high-level goals.",
-        media: "/feature-agent-mode.mp4",
-        mediaType: "video"
-    },
-    {
-        title: "Interactive Control",
-        description: "Use UI interactions and natural language to precisely describe chart designs. Ask AI agents for recommendations. Use Data Threads to backtrack, explore new branches, or follow up.",
-        media: "/feature-interactive-control.mp4",
-        mediaType: "video"
-    },
-    {
-        title: "Verify & Share Insights",
-        description: "Interact with charts, inspect data, formulas, and code. Create reports to share insights grounded in your exploration.",
-        media: "/feature-generate-report.mp4",
-        mediaType: "video"
-    }
+const featureMedia = [
+    { media: "/feature-extract-data.mp4", mediaType: "video" as const },
+    { media: "/feature-agent-mode.mp4", mediaType: "video" as const },
+    { media: "/feature-interactive-control.mp4", mediaType: "video" as const },
+    { media: "/feature-generate-report.mp4", mediaType: "video" as const },
 ];
 
 export const About: FC<{}> = function About({ }) {
     const theme = useTheme();
     const serverConfig = useSelector((state: DataFormulatorState) => state.serverConfig);
+    const { t } = useTranslation();
+
+    const features: Feature[] = featureMedia.map((item, index) => ({
+        title: t(`about.feature${index + 1}Title`),
+        description: t(`about.feature${index + 1}Description`),
+        media: item.media,
+        mediaType: item.mediaType,
+    }));
 
     let actionButtons = !serverConfig.PROJECT_FRONT_PAGE ? (
         <Box component="nav" aria-label="Primary actions" sx={{ display: 'flex', justifyContent: 'center', gap: 1.5, mb: 4, flexWrap: 'wrap' }}>
             <Button size="large" variant="contained" color="primary" 
                 startIcon={<PrecisionManufacturingIcon aria-hidden="true" />}
                 href="/app"
-            >Start Exploration</Button>
+            >{t('about.startExploration')}</Button>
         </Box>
     ) : (
         <Box component="nav" aria-label="Primary actions" sx={{ display: 'flex', justifyContent: 'center', gap: 1.5, mb: 4, flexWrap: 'wrap' }}>
@@ -65,30 +54,30 @@ export const About: FC<{}> = function About({ }) {
                 startIcon={<Box component="img" sx={{ width: 20, height: 20 }} alt="" aria-hidden="true" src="/pip-logo.svg" />}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="Install Locally via pip (opens in new tab)"
+                aria-label={t('about.installViaPipAria')}
                 href="https://pypi.org/project/data-formulator/"
-            >Install Locally</Button>
+            >{t('about.installLocally')}</Button>
             <Button size="large" variant="contained" color="primary" 
                 sx={{ textTransform: 'none' }}
                 startIcon={<GridViewIcon aria-hidden="true" />}
                 href="/app"
-            >Try Online Demo</Button>
+            >{t('about.tryOnlineDemo')}</Button>
             <Button size="large" variant="outlined" color="primary" 
                 sx={{ textTransform: 'none' }}
                 startIcon={<YouTubeIcon sx={{ color: '#FF0000' }} aria-hidden="true" />}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="Watch Video on YouTube (opens in new tab)"
+                aria-label={t('about.watchVideoAria')}
                 href="https://www.youtube.com/watch?v=GfTE2FLyMrs"
-            >Video</Button>
+            >{t('about.video')}</Button>
             <Button size="large" variant="outlined" color="primary" 
                 sx={{ textTransform: 'none' }}
                 startIcon={<GitHubIcon aria-hidden="true" />}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="View on GitHub (opens in new tab)"
+                aria-label={t('about.viewGithubAria')}
                 href="https://github.com/microsoft/data-formulator"
-            >GitHub</Button>
+            >{t('about.github')}</Button>
         </Box>
     );
 
@@ -116,7 +105,7 @@ export const About: FC<{}> = function About({ }) {
                     <Typography component="p" sx={{ 
                         fontSize: 24, color: theme.palette.text.secondary, 
                         textAlign: 'center', mb: 4}}>
-                        Explore data with visualizations, powered by AI agents. 
+                        {t('landing.tagline')}
                     </Typography>
                 </Box>
                 
@@ -125,7 +114,7 @@ export const About: FC<{}> = function About({ }) {
                 {/* Features Grid - 2 columns, 4 rows */}
                 <Box 
                     component="section" 
-                    aria-label="Features"
+                    aria-label={t('about.featuresAria')}
                     sx={{ display: 'flex', flexDirection: 'column', gap: 5, mt: 2 }}
                 >
                     {features.map((feature, index) => (
@@ -188,7 +177,7 @@ export const About: FC<{}> = function About({ }) {
                                         muted
                                         playsInline
                                         preload="metadata"
-                                        aria-label={`Video demonstration: ${feature.title}`}
+                                        aria-label={t('about.videoDemoAria', { title: feature.title })}
                                         sx={{
                                             width: '100%',
                                             height: 'auto',
@@ -215,10 +204,10 @@ export const About: FC<{}> = function About({ }) {
 
                 <Box sx={{ mt: 6, mx: 2 }}>
                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                        <strong>Data handling:</strong> Data stored in browser only • Local install runs Python locally; online demo processes server-side (not stored) • LLM receives small samples with prompts
+                        <strong>{t('about.dataHandling')}</strong> {t('about.dataHandlingText')}
                     </Typography>
                     <Typography variant="body2" sx={{ display: 'block', mt: 1, color: 'text.secondary' }}>
-                        Research Prototype from Microsoft Research
+                        {t('about.researchPrototype')}
                     </Typography>
                 </Box>
             </Box>
@@ -235,22 +224,22 @@ export const About: FC<{}> = function About({ }) {
                         sx={{ textTransform: 'none' }} 
                         target="_blank" 
                         rel="noopener noreferrer" 
-                        aria-label="Privacy & Cookies (opens in new tab)"
-                        href="https://www.microsoft.com/en-us/privacy/privacystatement">Privacy & Cookies</Button>
+                        aria-label={t('footer.privacyCookiesAria')}
+                        href="https://www.microsoft.com/en-us/privacy/privacystatement">{t('footer.privacyCookies')}</Button>
                 <Divider orientation="vertical" variant="middle" flexItem sx={{ mx: 1 }} aria-hidden="true" />
                 <Button size="small" color="inherit" 
                         sx={{ textTransform: 'none' }} 
                         target="_blank" 
                         rel="noopener noreferrer" 
-                        aria-label="Terms of Use (opens in new tab)"
-                        href="https://www.microsoft.com/en-us/legal/intellectualproperty/copyright">Terms of Use</Button>
+                        aria-label={t('footer.termsOfUseAria')}
+                        href="https://www.microsoft.com/en-us/legal/intellectualproperty/copyright">{t('footer.termsOfUse')}</Button>
                 <Divider orientation="vertical" variant="middle" flexItem sx={{ mx: 1 }} aria-hidden="true" />
                 <Button size="small" color="inherit" 
                         sx={{ textTransform: 'none' }} 
                         target="_blank" 
                         rel="noopener noreferrer" 
-                        aria-label="Contact Us (opens in new tab)"
-                        href="https://github.com/microsoft/data-formulator/issues">Contact Us</Button>
+                        aria-label={t('footer.contactUsAria')}
+                        href="https://github.com/microsoft/data-formulator/issues">{t('footer.contactUs')}</Button>
                 <Typography component="span" sx={{ fontSize: '12px', ml: 1 }}>© {new Date().getFullYear()}</Typography>
             </Box>
         </Box>)
