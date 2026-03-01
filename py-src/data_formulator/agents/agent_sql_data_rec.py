@@ -140,6 +140,11 @@ note:
 
 some notes:
 - in DuckDB, you escape a single quote within a string by doubling it ('') rather than using a backslash (\').
+- Critical identifier quoting rule:
+  * If a table/column name contains non-ASCII characters (e.g., Chinese), spaces, or punctuation,
+    you MUST wrap it in double quotes, e.g. SELECT "金额" FROM "客户表".
+  * Never output placeholder identifiers like your_table_name, your_column, your_condition.
+  * Always use real table and column names from [CONTEXT].
 - in DuckDB, you need to use proper date functions to perform date operations.
 - Critical: When using date/time functions in DuckDB, always cast date columns to explicit types to avoid function overload ambiguity:
   * Use `CAST(date_column AS DATE)` for date operations

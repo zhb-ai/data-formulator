@@ -14,9 +14,11 @@ def sanitize_table_name(name_as: str) -> str:
     # Remove any SQL injection attempts
     name_as = name_as.replace(";", "").replace("--", "").replace("/*", "").replace("*/", "")
     
-    # Replace invalid characters with underscores
-    # This includes special characters, spaces, dots, dashes, and other non-alphanumeric chars
-    sanitized = re.sub(r'[^a-zA-Z0-9_]', '_', name_as)
+    # Replace invalid characters with underscores while preserving Unicode letters.
+    sanitized = re.sub(r"[^\w]", "_", name_as, flags=re.UNICODE)
+    sanitized = re.sub(r"_+", "_", sanitized).strip("_")
+    if not sanitized:
+        sanitized = "table"
     
     # Ensure the name starts with a letter or underscore
     if not sanitized[0].isalpha() and sanitized[0] != '_':

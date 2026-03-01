@@ -83,6 +83,11 @@ note:
 
 some notes:
 - in DuckDB, you escape a single quote within a string by doubling it ('') rather than using a backslash (\').
+- Critical identifier quoting rule:
+  * If a table/column name contains non-ASCII characters (e.g., Chinese), spaces, or punctuation,
+    you MUST wrap it in double quotes, e.g. SELECT "金额" FROM "客户表".
+  * Never output placeholder identifiers like your_table_name, your_column, your_condition.
+  * Always use real table and column names from [CONTEXT].
 - in DuckDB, you need to use proper date functions to perform date operations.
 - Critical: When using date/time functions in DuckDB, always cast date columns to explicit types to avoid function overload ambiguity:
   * Use `CAST(date_column AS DATE)` for date operations
@@ -161,12 +166,15 @@ FROM pivoted;
 '''
 
 def sanitize_table_name(table_name: str) -> str:
-    """Sanitize table name to be used in SQL queries"""
-    # Replace spaces with underscores
-    sanitized_name = table_name.replace(" ", "_")
-    sanitized_name = sanitized_name.replace("-", "_")
-    # Allow alphanumeric, underscore, dot, dash, and dollar sign
-    sanitized_name = re.sub(r'[^a-zA-Z0-9_\.$]', '', sanitized_name)
+    """Sanitize table name for DuckDB while preserving Unicode letters."""
+    sanitized_name = (table_name or "").strip().replace(" ", "_").replace("-", "_")
+    # Keep Unicode letters/digits/underscore and '$'; normalize others to '_'
+    sanitized_name = re.sub(r"[^\w$]", "_", sanitized_name, flags=re.UNICODE)
+    sanitized_name = re.sub(r"_+", "_", sanitized_name).strip("_")
+    if not sanitized_name:
+        sanitized_name = "table"
+    if not (sanitized_name[0].isalpha() or sanitized_name[0] == "_"):
+        sanitized_name = f"table_{sanitized_name}"
     return sanitized_name
 
 class SQLDataTransformationAgent(object):

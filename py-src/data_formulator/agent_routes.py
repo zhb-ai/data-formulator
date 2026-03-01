@@ -357,72 +357,128 @@ def sort_data_request():
 
 @agent_bp.route('/derive-data', methods=['GET', 'POST'])
 def derive_data():
+    token = ""
+    conn = None
 
     if request.is_json:
-        logger.info("# request data: ")
-        content = request.get_json()        
-        token = content["token"]
+        try:
+            logger.info("# request data: ")
+            content = request.get_json()
+            token = content["token"]
 
-        client = get_client(content['model'])
+            client = get_client(content['model'])
 
-        # each table is a dict with {"name": xxx, "rows": [...]}
-        input_tables = content["input_tables"]
-        chart_type = content.get("chart_type", "")
-        chart_encodings = content.get("chart_encodings", {})
+            # each table is a dict with {"name": xxx, "rows": [...]}
+            input_tables = content["input_tables"]
+            chart_type = content.get("chart_type", "")
+            chart_encodings = content.get("chart_encodings", {})
 
-        instruction = content["extra_prompt"]
-        language = content.get("language", "python") # whether to use sql or python, default to python
-        
-        max_repair_attempts = content["max_repair_attempts"] if "max_repair_attempts" in content else 1
-        agent_coding_rules = content.get("agent_coding_rules", "")
+            instruction = content["extra_prompt"]
+            language = content.get("language", "python")  # whether to use sql or python, default to python
+            max_repair_attempts = content.get("max_repair_attempts", 1)
+            agent_coding_rules = content.get("agent_coding_rules", "")
+            prev_messages = content.get("additional_messages", [])
 
-        if "additional_messages" in content:
-            prev_messages = content["additional_messages"]
-        else:
-            prev_messages = []
+            logger.info("== input tables ===>")
+            for table in input_tables:
+                logger.info(f"===> Table: {table['name']} (first 5 rows)")
+                logger.info(table['rows'][:5])
 
-        logger.info("== input tables ===>")
-        for table in input_tables:
-            logger.info(f"===> Table: {table['name']} (first 5 rows)")
-            logger.info(table['rows'][:5])
+            logger.info("== user spec ===")
+            logger.info(chart_type)
+            logger.info(chart_encodings)
+            logger.info(instruction)
 
-        logger.info("== user spec ===")
-        logger.info(chart_type)
-        logger.info(chart_encodings)
-        logger.info(instruction)
+            mode = "transform"
+            if chart_encodings == {}:
+                mode = "recommendation"
 
-        mode = "transform"
-        if chart_encodings == {}:
-            mode = "recommendation"
+            conn = db_manager.get_connection(session['session_id']) if language == "sql" else None
 
-        conn = db_manager.get_connection(session['session_id']) if language == "sql" else None
-
-        if mode == "recommendation":
-            # now it's in recommendation mode
-            agent = SQLDataRecAgent(client=client, conn=conn, agent_coding_rules=agent_coding_rules) if language == "sql" else PythonDataRecAgent(client=client, exec_python_in_subprocess=current_app.config['CLI_ARGS']['exec_python_in_subprocess'], agent_coding_rules=agent_coding_rules)
-            results = agent.run(input_tables, instruction, n=1, prev_messages=prev_messages)
-        else:
-            agent = SQLDataTransformationAgent(client=client, conn=conn, agent_coding_rules=agent_coding_rules) if language == "sql" else PythonDataTransformationAgent(client=client, exec_python_in_subprocess=current_app.config['CLI_ARGS']['exec_python_in_subprocess'], agent_coding_rules=agent_coding_rules)
-            results = agent.run(input_tables, instruction, chart_type, chart_encodings, prev_messages)
-
-        repair_attempts = 0
-        while results[0]['status'] == 'error' and repair_attempts < max_repair_attempts: # try up to n times
-            error_message = results[0]['content']
-            new_instruction = f"We run into the following problem executing the code, please fix it:\n\n{error_message}\n\nPlease think step by step, reflect why the error happens and fix the code so that no more errors would occur."
-
-            prev_dialog = results[0]['dialog']
-
-            if mode == "transform":
-                results = agent.followup(input_tables, prev_dialog, [], chart_type, chart_encodings, new_instruction, n=1)
             if mode == "recommendation":
-                results = agent.followup(input_tables, prev_dialog, [], new_instruction, n=1)
+                agent = SQLDataRecAgent(client=client, conn=conn, agent_coding_rules=agent_coding_rules) if language == "sql" else PythonDataRecAgent(client=client, exec_python_in_subprocess=current_app.config['CLI_ARGS']['exec_python_in_subprocess'], agent_coding_rules=agent_coding_rules)
+                results = agent.run(input_tables, instruction, n=1, prev_messages=prev_messages)
+            else:
+                agent = SQLDataTransformationAgent(client=client, conn=conn, agent_coding_rules=agent_coding_rules) if language == "sql" else PythonDataTransformationAgent(client=client, exec_python_in_subprocess=current_app.config['CLI_ARGS']['exec_python_in_subprocess'], agent_coding_rules=agent_coding_rules)
+                results = agent.run(input_tables, instruction, chart_type, chart_encodings, prev_messages)
 
-            repair_attempts += 1
-        
-        if conn:
-            conn.close()
-        
-        response = flask.jsonify({ "token": token, "status": "ok", "results": results })
+            repair_attempts = 0
+            while (
+                isinstance(results, list)
+                and len(results) > 0
+                and results[0].get('status') in ('error', 'sql_error', 'other error')
+                and repair_attempts < max_repair_attempts
+            ):  # try up to n times
+                error_message = results[0].get('content', 'Unknown error')
+                new_instruction = f"We run into the following problem executing the code, please fix it:\n\n{error_message}\n\nPlease think step by step, reflect why the error happens and fix the code so that no more errors would occur."
+                prev_dialog = results[0].get('dialog', [])
+
+                try:
+                    if mode == "transform":
+                        results = agent.followup(input_tables, prev_dialog, [], chart_type, chart_encodings, new_instruction, n=1)
+                    if mode == "recommendation":
+                        results = agent.followup(input_tables, prev_dialog, [], new_instruction, n=1)
+                except Exception as followup_exc:
+                    logger.exception("derive_data followup failed")
+                    results = [{
+                        "status": "error",
+                        "content": sanitize_model_error(str(followup_exc)),
+                        "code": "",
+                        "dialog": [],
+                    }]
+                    break
+
+                repair_attempts += 1
+
+            # If SQL path is still failing after repair attempts, fallback to
+            # Python mode once to improve robustness for non-ASCII identifiers.
+            if (
+                language == "sql"
+                and isinstance(results, list)
+                and len(results) > 0
+                and results[0].get('status') in ('error', 'sql_error', 'other error')
+            ):
+                logger.warning("SQL derive_data still failing after retries; fallback to python mode")
+                try:
+                    if mode == "recommendation":
+                        py_agent = PythonDataRecAgent(
+                            client=client,
+                            exec_python_in_subprocess=current_app.config['CLI_ARGS']['exec_python_in_subprocess'],
+                            agent_coding_rules=agent_coding_rules,
+                        )
+                        py_results = py_agent.run(input_tables, instruction, n=1, prev_messages=prev_messages)
+                    else:
+                        py_agent = PythonDataTransformationAgent(
+                            client=client,
+                            exec_python_in_subprocess=current_app.config['CLI_ARGS']['exec_python_in_subprocess'],
+                            agent_coding_rules=agent_coding_rules,
+                        )
+                        py_results = py_agent.run(input_tables, instruction, chart_type, chart_encodings, prev_messages)
+
+                    if isinstance(py_results, list) and len(py_results) > 0:
+                        for item in py_results:
+                            if isinstance(item, dict):
+                                item["fallback_from_sql"] = True
+                        results = py_results
+                except Exception as fallback_exc:
+                    logger.warning("Python fallback failed: %s", fallback_exc, exc_info=True)
+
+            response = flask.jsonify({ "token": token, "status": "ok", "results": results })
+        except Exception as exc:
+            logger.exception("derive_data request failed")
+            response = flask.jsonify({
+                "token": token,
+                "status": "error",
+                "results": [{
+                    "status": "error",
+                    "content": sanitize_model_error(str(exc)),
+                    "code": "",
+                    "dialog": [],
+                }],
+            })
+        finally:
+            if conn:
+                conn.close()
     else:
         response = flask.jsonify({ "token": "", "status": "error", "results": [] })
 
@@ -625,17 +681,18 @@ def get_recommendation_questions():
             client = get_client(content['model'])
 
             language = content.get("language", "python")
+            db_conn = None
             if language == "sql":
-                db_conn = db_manager.get_connection(session['session_id'])
-            else:
-                db_conn = None
+                try:
+                    db_conn = db_manager.get_connection(session['session_id'])
+                except Exception as conn_exc:
+                    logger.warning("get-recommendation-questions: failed to get SQL conn, falling back to python: %s", conn_exc)
 
             agent_exploration_rules = content.get("agent_exploration_rules", "")
-            agent = InteractiveExploreAgent(client=client, agent_exploration_rules=agent_exploration_rules, db_conn=db_conn)
 
             # Get input tables from the request
             input_tables = content.get("input_tables", [])
-            
+
             # Get exploration thread if provided (for context from previous explorations)
             mode = content.get("mode", "interactive")
             start_question = content.get("start_question", None)
@@ -643,19 +700,53 @@ def get_recommendation_questions():
             current_chart = content.get("current_chart", None)
             current_data_sample = content.get("current_data_sample", None)
 
+            agent = InteractiveExploreAgent(
+                client=client,
+                agent_exploration_rules=agent_exploration_rules,
+                db_conn=db_conn,
+            )
+
             try:
-                for chunk in agent.run(input_tables, start_question, exploration_thread, current_data_sample, current_chart, mode):
+                for chunk in agent.run(
+                    input_tables, start_question, exploration_thread,
+                    current_data_sample, current_chart, mode,
+                ):
                     yield chunk
             except Exception as e:
-                logger.error(e)
-                error_data = { 
-                    "content": "unable to process recommendation questions request" 
-                }
+                logger.warning(
+                    "get-recommendation-questions SQL agent failed (%s); retrying with python mode", e
+                )
+                # SQL mode failed (often non-ASCII identifiers) — retry without DB connection.
+                if language == "sql" and db_conn is not None:
+                    try:
+                        if db_conn:
+                            try:
+                                db_conn.close()
+                            except Exception:
+                                pass
+                        py_agent = InteractiveExploreAgent(
+                            client=client,
+                            agent_exploration_rules=agent_exploration_rules,
+                            db_conn=None,
+                        )
+                        for chunk in py_agent.run(
+                            input_tables, start_question, exploration_thread,
+                            current_data_sample, current_chart, mode,
+                        ):
+                            yield chunk
+                        return
+                    except Exception as py_exc:
+                        logger.error(
+                            "get-recommendation-questions python fallback also failed: %s", py_exc
+                        )
+                        error_data = {"content": sanitize_model_error(str(py_exc))}
+                        yield 'error: ' + json.dumps(error_data) + '\n'
+                        return
+
+                error_data = {"content": sanitize_model_error(str(e))}
                 yield 'error: ' + json.dumps(error_data) + '\n'
         else:
-            error_data = { 
-                "content": "Invalid request format" 
-            }
+            error_data = {"content": "Invalid request format"}
             yield 'error: ' + json.dumps(error_data) + '\n'
 
     response = Response(
