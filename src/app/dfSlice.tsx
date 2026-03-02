@@ -387,7 +387,8 @@ export const dataFormulatorSlice = createSlice({
             //state.config = initialState.config;
             //state.dataLoaderConnectParams = initialState.dataLoaderConnectParams;
 
-            state.testedModels = [];
+            // Keep model test results across session reset so model auto-selection
+            // does not override the user's previously selected model.
 
             state.tables = [];
             state.charts = [];

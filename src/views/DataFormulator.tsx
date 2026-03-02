@@ -51,7 +51,6 @@ export const DataFormulatorFC = ({ }) => {
     const tables = useSelector((state: DataFormulatorState) => state.tables);
     const models = useSelector(dfSelectors.getAllModels);
     const selectedModelId = useSelector((state: DataFormulatorState) => state.selectedModelId);
-    const testedModels = useSelector((state: DataFormulatorState) => state.testedModels);
     const viewMode = useSelector((state: DataFormulatorState) => state.viewMode);
     const serverConfig = useSelector((state: DataFormulatorState) => state.serverConfig);
     const theme = useTheme();
@@ -136,22 +135,15 @@ export const DataFormulatorFC = ({ }) => {
     }, []);
 
     useEffect(() => {
+        // Only auto-select a model when none is selected. If the user already
+        // chose a model (selectedModelId is set), respect that choice even if
+        // globalModels haven't loaded yet — they will arrive asynchronously and
+        // the selected model will become available in the list at that point.
+        if (selectedModelId !== undefined) {
+            return;
+        }
+
         const findWorkingModel = async () => {
-            // If the currently selected model was verified as working in the last
-            // session (persisted testedModels has status 'ok'), keep it selected
-            // and skip auto-selection.  This prevents a global model (which lives
-            // in globalModels and is not yet loaded at mount time) from being
-            // incorrectly replaced by the first available user-added model.
-            const persistedStatus = testedModels.find(t => t.id === selectedModelId)?.status;
-            if (persistedStatus === 'ok') {
-                return;
-            }
-
-            let selectedModel = models.find(m => m.id == selectedModelId);
-            let otherModels = models.filter(m => m.id != selectedModelId);
-
-            let modelsToTest = [selectedModel, ...otherModels].filter(m => m != undefined);
-
             let testModel = async (model: ModelConfig) => {
                 const message = {
                     method: 'POST',
@@ -168,8 +160,7 @@ export const DataFormulatorFC = ({ }) => {
                 }
             }
 
-            // Test models sequentially until one works
-            for (let model of modelsToTest) {
+            for (let model of models) {
                 let testResult = await testModel(model);
                 dispatch(dfActions.updateModelStatus({
                     id: model.id, 
@@ -186,7 +177,7 @@ export const DataFormulatorFC = ({ }) => {
         if (models.length > 0) {
             findWorkingModel();
         }
-    }, []);
+    }, [dispatch, models, selectedModelId]);
 
     const visPaneMain = (
         <Box sx={{ width: "100%", overflow: "hidden", display: "flex", flexDirection: "row" }}>

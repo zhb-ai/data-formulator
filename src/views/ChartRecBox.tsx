@@ -1072,13 +1072,13 @@ export const ChartRecBox: FC<ChartRecBoxProps> = function ({ tableId, placeHolde
                         ml: 1,
                         '& .MuiButton-root': {
                             textTransform: 'none',
-                            fontSize: '0.625rem',
+                            fontSize: '0.8rem',
                             fontWeight: 500,
                             border: 'none',
                             borderRadius: '4px',
                             borderBottomLeftRadius: 0,
                             borderBottomRightRadius: 0,
-                            padding: '2px 6px',
+                            padding: '4px 12px',
                             minWidth: 'auto',
                         },
                     }}
