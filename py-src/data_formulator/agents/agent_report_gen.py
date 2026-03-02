@@ -51,11 +51,31 @@ The report should be based off the data and visualizations provided by the user,
 Output markdown directly, do not need to include any other text.
 '''
 
+LANGUAGE_NAMES = {
+    'zh': 'Chinese (简体中文)',
+    'en': 'English',
+}
+
 class ReportGenAgent(object):
 
-    def __init__(self, client, conn):
+    def __init__(self, client, conn, agent_exploration_rules="", agent_coding_rules="", ui_language="en"):
         self.client = client
         self.conn = conn
+        self.ui_language = ui_language
+
+        self.system_prompt = SYSTEM_PROMPT
+        if ui_language and ui_language != 'en':
+            lang_name = LANGUAGE_NAMES.get(ui_language, ui_language)
+            self.system_prompt += f'\n\nIMPORTANT: The user\'s interface language is {lang_name}. You MUST write the entire report (title, content, summary, everything) in {lang_name}. Do not use English unless referring to proper nouns or technical terms.'
+
+        self.agent_rules_text = ""
+        agent_rules_parts = []
+        if agent_exploration_rules and agent_exploration_rules.strip():
+            agent_rules_parts.append(agent_exploration_rules.strip())
+        if agent_coding_rules and agent_coding_rules.strip():
+            agent_rules_parts.append(agent_coding_rules.strip())
+        if agent_rules_parts:
+            self.agent_rules_text = "\n".join(agent_rules_parts)
 
     def get_data_summary(self, input_tables):
         if self.conn:
@@ -109,14 +129,21 @@ class ReportGenAgent(object):
                     }
                 ]
 
+        user_instruction = 'Now based off the data and visualizations provided by the user, generate a report in markdown. The style of the report should be ' + style + '.'
+        if self.ui_language and self.ui_language != 'en':
+            lang_name = LANGUAGE_NAMES.get(self.ui_language, self.ui_language)
+            user_instruction += f'\n\nREMINDER: Write the ENTIRE report in {lang_name}.'
+        if self.agent_rules_text:
+            user_instruction += '\n\n[USER RULES - highest priority]:\n' + self.agent_rules_text
+
         user_prompt = {
             'role': 'user',
-            'content': content + [{'type': 'text', 'text': 'Now based off the data and visualizations provided by the user, generate a report in markdown. The style of the report should be ' + style + '.'}]
+            'content': content + [{'type': 'text', 'text': user_instruction}]
         }
 
         system_message = {
             'role': 'system',
-            'content': [ {'type': 'text', 'text': SYSTEM_PROMPT}]
+            'content': [ {'type': 'text', 'text': self.system_prompt}]
         }
 
         messages = [

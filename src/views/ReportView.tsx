@@ -226,9 +226,10 @@ export const ReportView: FC = () => {
     const conceptShelfItems = useSelector((state: DataFormulatorState) => state.conceptShelfItems);
     const config = useSelector((state: DataFormulatorState) => state.config);
     const allGeneratedReports = useSelector(dfSelectors.getAllGeneratedReports);
+    const agentRules = useSelector((state: DataFormulatorState) => state.agentRules);
     const focusedChartId = useSelector((state: DataFormulatorState) => state.focusedChartId);
     const theme = useTheme();
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
 
     const [selectedChartIds, setSelectedChartIds] = useState<Set<string>>(new Set(focusedChartId ? [focusedChartId] : []));
     const [previewImages, setPreviewImages] = useState<Map<string, { url: string; width: number; height: number }>>(new Map());
@@ -722,7 +723,10 @@ export const ReportView: FC = () => {
                 input_tables: inputTables,
                 charts: validCharts,
                 style: style,
-                language: tables.some(t => t.virtual) ? "sql" : "python"
+                language: tables.some(t => t.virtual) ? "sql" : "python",
+                agent_exploration_rules: agentRules.exploration,
+                agent_coding_rules: agentRules.coding,
+                ui_language: i18n.language,
             };
 
             const response = await fetch(getUrls().GENERATE_REPORT_STREAM, {

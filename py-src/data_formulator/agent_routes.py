@@ -774,7 +774,14 @@ def generate_report_stream():
             else:
                 db_conn = None
 
-            agent = ReportGenAgent(client=client, conn=db_conn)
+            agent_exploration_rules = content.get("agent_exploration_rules", "")
+            agent_coding_rules = content.get("agent_coding_rules", "")
+            ui_language = content.get("ui_language", "en")
+
+            agent = ReportGenAgent(client=client, conn=db_conn,
+                                   agent_exploration_rules=agent_exploration_rules,
+                                   agent_coding_rules=agent_coding_rules,
+                                   ui_language=ui_language)
 
             # Get input tables and charts from the request
             input_tables = content.get("input_tables", [])
