@@ -199,7 +199,7 @@ class ExplorationAgent(object):
             
             messages.append({"role": "user", "content": content})
         
-        messages.append({"role": "user", "content": f"[NEXT STEPS]\n\n{json.dumps(next_steps, indent=4)}"})
+        messages.append({"role": "user", "content": f"[NEXT STEPS]\n\n{json.dumps(next_steps, indent=4, ensure_ascii=False)}"})
 
         response = self.client.get_completion(messages)
         

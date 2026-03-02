@@ -347,7 +347,7 @@ class PythonDataTransformationAgent(object):
             "chart_encodings": chart_encodings,
         }
 
-        user_query = f"[CONTEXT]\n\n{data_summary}\n\n[GOAL]\n\n{json.dumps(goal, indent=4)}"
+        user_query = f"[CONTEXT]\n\n{data_summary}\n\n[GOAL]\n\n{json.dumps(goal, indent=4, ensure_ascii=False)}"
         if len(prev_messages) > 0:
             user_query = f"The user wants a new transformation based off the following updated context and goal:\n\n[CONTEXT]\n\n{data_summary}\n\n[GOAL]\n\n{description}"
 
@@ -391,7 +391,7 @@ class PythonDataTransformationAgent(object):
 
         messages = [*updated_dialog, 
                     {"role":"user", 
-                    "content": f"This is the result from the latest python code:\n\n{sample_data_str}\n\nUpdate the code above based on the following instruction:\n\n{json.dumps(goal, indent=4)}"}]
+                    "content": f"This is the result from the latest python code:\n\n{sample_data_str}\n\nUpdate the code above based on the following instruction:\n\n{json.dumps(goal, indent=4, ensure_ascii=False)}"}]
 
         response = self.client.get_completion(messages = messages)
 
