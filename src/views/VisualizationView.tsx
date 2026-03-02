@@ -766,6 +766,7 @@ export const ChartEditorFC: FC<{}> = function ChartEditorFC({}) {
 
 
     let chartMessage = "";
+    let isWarningMessage = false;
     if (focusedChart.chartType == "Table") {
         chartMessage = t('chart.msgTable');
     } else if (focusedChart.chartType == "Auto") {
@@ -778,6 +779,7 @@ export const ChartEditorFC: FC<{}> = function ChartEditorFC({}) {
         chartMessage = t('chart.msgSynthesizing');
     } else if (table.derive) {
         chartMessage = t('chart.msgWarning');
+        isWarningMessage = true;
     }
 
     let chartActionItems = isDataStale ? [] : (
@@ -807,7 +809,14 @@ export const ChartEditorFC: FC<{}> = function ChartEditorFC({}) {
                     </Tooltip>
                 </Box>
             ) : ""}
-            <Typography component="span" fontSize="small" color="text.secondary" sx={{textAlign:'center'}}>
+            <Typography
+                component="span"
+                color={isWarningMessage ? "text.disabled" : "text.secondary"}
+                sx={{
+                    textAlign: 'center',
+                    fontSize: isWarningMessage ? '0.65rem' : 'small',
+                }}
+            >
                 {chartMessage}
             </Typography>
         </Box>

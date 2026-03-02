@@ -658,6 +658,18 @@ export const dataFormulatorSlice = createSlice({
                 });
             }
         },
+        updateColumnType: (state, action: PayloadAction<{tableId: string, columnName: string, type: Type}>) => {
+            let { tableId, columnName, type } = action.payload;
+            let table = state.tables.find(t => t.id == tableId);
+            if (table && table.metadata[columnName]) {
+                table.metadata[columnName] = { ...table.metadata[columnName], type };
+                let fieldId = `original--${tableId}--${columnName}`;
+                let field = state.conceptShelfItems.find(f => f.id === fieldId);
+                if (field) {
+                    field.type = type;
+                }
+            }
+        },
         createNewChart: (state, action: PayloadAction<{chartType: string, tableId: string}>) => {
             let chartType = action.payload.chartType;
             let tableId = action.payload.tableId || state.tables[0].id;

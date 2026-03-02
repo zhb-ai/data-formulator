@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 import * as React from 'react';
-import { TableVirtuoso } from 'react-virtuoso';
+import { TableVirtuoso, VirtuosoHandle } from 'react-virtuoso';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -14,10 +14,10 @@ import { Box } from '@mui/system';
 import { useTheme } from '@mui/material/styles';
 import { alpha, Paper, Tooltip, CircularProgress, Fade } from "@mui/material";
 
-import { Type } from '../data/types';
+import { Type, TypeList } from '../data/types';
 import { getIconFromType } from './ViewUtils';
 
-import { IconButton, TableSortLabel, Typography } from '@mui/material';
+import { IconButton, TableSortLabel, Typography, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
 
 import _ from 'lodash';
 import { FieldSource, FieldItem } from '../components/ComponentType';
@@ -32,8 +32,8 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckIcon from '@mui/icons-material/Check';
 import { getUrls } from '../app/utils';
 import { useDrag } from 'react-dnd';
-import { useSelector } from 'react-redux';
-import { DataFormulatorState } from '../app/dfSlice';
+import { useSelector, useDispatch } from 'react-redux';
+import { DataFormulatorState, dfActions } from '../app/dfSlice';
 import { useTranslation } from 'react-i18next';
 
 export interface ColumnDef {
@@ -109,8 +109,10 @@ const DraggableHeader: React.FC<DraggableHeaderProps> = ({
 }) => {
     const theme = useTheme();
     const { t } = useTranslation();
+    const dispatch = useDispatch();
     const [isHeaderHovered, setIsHeaderHovered] = React.useState<boolean>(false);
     const [copied, setCopied] = React.useState<boolean>(false);
+    const [typeMenuAnchor, setTypeMenuAnchor] = React.useState<null | HTMLElement>(null);
     const conceptShelfItems = useSelector((state: DataFormulatorState) => state.conceptShelfItems);
     
     // Find the corresponding FieldItem for this column
@@ -228,7 +230,7 @@ const DraggableHeader: React.FC<DraggableHeaderProps> = ({
                     flexDirection: "row", 
                     flex: 1,
                     minWidth: 0,
-                    cursor: cursorStyle, // Inherit cursor from parent
+                    cursor: cursorStyle,
                     '& .MuiTableSortLabel-icon': {
                         display: 'none',
                     },
@@ -236,49 +238,70 @@ const DraggableHeader: React.FC<DraggableHeaderProps> = ({
                 active={orderBy === columnDef.id}
                 direction={orderBy === columnDef.id ? order : 'asc'}
                 onClick={(e) => {
-                    // Prevent sort when dragging
                     if (!isDragging) {
                         e.stopPropagation();
                         onSortClick();
                     }
                 }}
             >
-                <span role="img" style={{ fontSize: "inherit", padding: "2px", display: "inline-flex", alignItems: "center" }}>
-                    {getIconFromType(columnDef.dataType)}
-                </span>
+                {columnDef.id !== "#rowId" ? (
+                    <Tooltip title={<Typography sx={{fontSize: 10}}>{t('messages.changeColumnType', 'Change column type')}</Typography>}>
+                        <span
+                            role="img"
+                            style={{ fontSize: "inherit", padding: "2px", display: "inline-flex", alignItems: "center", cursor: "pointer" }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setTypeMenuAnchor(e.currentTarget as HTMLElement);
+                            }}
+                        >
+                            {getIconFromType(columnDef.dataType)}
+                        </span>
+                    </Tooltip>
+                ) : (
+                    <span role="img" style={{ fontSize: "inherit", padding: "2px", display: "inline-flex", alignItems: "center" }}>
+                        {getIconFromType(columnDef.dataType)}
+                    </span>
+                )}
                 <Typography sx={{fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
                     {columnDef.label}
                 </Typography>
             </TableSortLabel>
-            {/* Separate sort handler button */}
-            <Tooltip title={<Typography sx={{fontSize: 10}}>{t('messages.sortBy', { label: columnDef.label })}</Typography>}>
-                <IconButton
-                    size="small"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onSortClick();
-                    }}
-                    sx={{
-                        padding: '2px',
-                        marginLeft: '4px',
-                        marginRight: '2px',
-                        opacity: orderBy === columnDef.id ? 1 : 0.5,
-                        '&:hover': {
-                            opacity: 1,
-                            backgroundColor: alpha(theme.palette.action.hover, 0.2),
-                        },
-                    }}
-                >
-                    {getSortIcon()}
-                </IconButton>
-            </Tooltip>
+            <Menu
+                anchorEl={typeMenuAnchor}
+                open={Boolean(typeMenuAnchor)}
+                onClose={() => setTypeMenuAnchor(null)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+                slotProps={{ paper: { sx: { minWidth: 130, fontSize: 12 } } }}
+            >
+                {TypeList.map((typeOption) => (
+                    <MenuItem
+                        key={typeOption}
+                        selected={columnDef.dataType === typeOption}
+                        dense
+                        onClick={() => {
+                            dispatch(dfActions.updateColumnType({ tableId, columnName: columnDef.id, type: typeOption }));
+                            setTypeMenuAnchor(null);
+                        }}
+                        sx={{ fontSize: 12, py: '3px' }}
+                    >
+                        <ListItemIcon sx={{ minWidth: 24 }}>
+                            {getIconFromType(typeOption)}
+                        </ListItemIcon>
+                        <ListItemText primaryTypographyProps={{ fontSize: 12 }}>
+                            {typeOption}
+                        </ListItemText>
+                    </MenuItem>
+                ))}
+            </Menu>
+            {/* Copy button */}
             <Tooltip title={<Typography sx={{fontSize: 10}}>{copied ? t('messages.columnNameCopied', { label: columnDef.label }) : t('messages.copyColumnName', { label: columnDef.label })}</Typography>}>
                 <IconButton
                     size="small"
                     onClick={onCopyHeader}
                     sx={{
                         padding: '2px',
-                        marginLeft: '2px',
+                        marginLeft: '4px',
                         marginRight: '2px',
                         opacity: copied ? 1 : (isHeaderHovered ? 0.65 : 0),
                         pointerEvents: copied || isHeaderHovered ? 'auto' : 'none',
@@ -293,7 +316,119 @@ const DraggableHeader: React.FC<DraggableHeaderProps> = ({
                     {copied ? <CheckIcon sx={{ fontSize: 15 }} /> : <ContentCopyIcon sx={{ fontSize: 14 }} />}
                 </IconButton>
             </Tooltip>
+            {/* Sort button */}
+            <Tooltip title={<Typography sx={{fontSize: 10}}>{t('messages.sortBy', { label: columnDef.label })}</Typography>}>
+                <IconButton
+                    size="small"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onSortClick();
+                    }}
+                    sx={{
+                        padding: '2px',
+                        marginLeft: '2px',
+                        marginRight: '2px',
+                        opacity: orderBy === columnDef.id ? 1 : 0.5,
+                        '&:hover': {
+                            opacity: 1,
+                            backgroundColor: alpha(theme.palette.action.hover, 0.2),
+                        },
+                    }}
+                >
+                    {getSortIcon()}
+                </IconButton>
+            </Tooltip>
         </Box>
+    );
+};
+
+interface RowIdHeaderCellProps {
+    columnDef: ColumnDef;
+    virtuosoRef: React.RefObject<VirtuosoHandle>;
+    maxRow: number;
+}
+
+const RowIdHeaderCell: React.FC<RowIdHeaderCellProps> = ({ columnDef, virtuosoRef, maxRow }) => {
+    const theme = useTheme();
+    const [jumpValue, setJumpValue] = React.useState('');
+    const [isJumpFocused, setIsJumpFocused] = React.useState(false);
+    const jumpInputRef = React.useRef<HTMLInputElement>(null);
+
+    return (
+        <TableCell
+            className='data-view-header-cell'
+            key={columnDef.id}
+            onClick={() => jumpInputRef.current?.focus()}
+            sx={{
+                p: 0,
+                minWidth: columnDef.minWidth,
+                width: columnDef.width,
+                maxWidth: columnDef.width,
+                overflow: 'visible',
+                position: 'relative',
+                zIndex: isJumpFocused ? 20 : 'auto',
+                backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                textAlign: 'center',
+                cursor: 'text',
+            }}
+        >
+            <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '24px' }}>
+                <Typography
+                    sx={{
+                        fontSize: 11,
+                        color: 'rgba(0,0,0,0.45)',
+                        lineHeight: '24px',
+                        opacity: isJumpFocused ? 0 : 1,
+                        transition: 'opacity 0.1s',
+                        userSelect: 'none',
+                        pointerEvents: 'none',
+                    }}
+                >#</Typography>
+                <input
+                    ref={jumpInputRef}
+                    type="text"
+                    inputMode="numeric"
+                    value={jumpValue}
+                    placeholder="行#"
+                    onChange={(e) => setJumpValue(e.target.value.replace(/\D/g, ''))}
+                    onFocus={() => setIsJumpFocused(true)}
+                    onBlur={() => { setIsJumpFocused(false); setJumpValue(''); }}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                            let idx = parseInt(jumpValue, 10);
+                            if (!isNaN(idx) && maxRow > 0) {
+                                idx = Math.max(1, Math.min(idx, maxRow));
+                                setJumpValue(String(idx));
+                                virtuosoRef.current?.scrollToIndex({ index: idx - 1, align: 'start' });
+                            }
+                            e.currentTarget.blur();
+                        } else if (e.key === 'Escape') {
+                            e.currentTarget.blur();
+                        }
+                    }}
+                    style={{
+                        position: 'absolute',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        width: isJumpFocused ? '58px' : '18px',
+                        height: '18px',
+                        opacity: isJumpFocused ? 1 : 0,
+                        pointerEvents: isJumpFocused ? 'auto' : 'none',
+                        transition: 'width 0.15s ease, opacity 0.12s ease',
+                        fontSize: '11px',
+                        border: '1px solid rgba(0,0,0,0.25)',
+                        outline: 'none',
+                        backgroundColor: 'white',
+                        textAlign: 'center',
+                        color: 'rgba(0,0,0,0.7)',
+                        borderRadius: '3px',
+                        padding: '0 3px',
+                        zIndex: 21,
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
+                    }}
+                />
+            </Box>
+        </TableCell>
     );
 };
 
@@ -305,6 +440,8 @@ export const SelectableDataGrid: React.FC<SelectableDataGridProps> = ({
 
     let theme = useTheme();
     const { t } = useTranslation();
+
+    const virtuosoRef = React.useRef<VirtuosoHandle>(null);
 
     const [rowsToDisplay, setRowsToDisplay] = React.useState<any[]>(rows);
     
@@ -414,6 +551,7 @@ export const SelectableDataGrid: React.FC<SelectableDataGridProps> = ({
             <Fade in={!isLoading} timeout={{appear: 300, enter: 300, exit: 2000}}>
                 <Box sx={{ flex: '1 1', display: 'flex', flexDirection: 'column' }}>
                     <TableVirtuoso
+                            ref={virtuosoRef}
                             style={{ flex: '1 1' }}
                             data={rowsToDisplay}
                             components={TableComponents}
@@ -421,6 +559,16 @@ export const SelectableDataGrid: React.FC<SelectableDataGridProps> = ({
                         return (
                             <TableRow key='header-fixed' style={{ paddingRight: 0, marginRight: '17px', height: '24px'}}>
                                 {columnDefs.map((columnDef, index) => {
+                                    if (columnDef.id === "#rowId") {
+                                        return (
+                                            <RowIdHeaderCell
+                                                key={columnDef.id}
+                                                columnDef={columnDef}
+                                                virtuosoRef={virtuosoRef}
+                                                maxRow={rowsToDisplay.length}
+                                            />
+                                        );
+                                    }
                                     return (
                                         <TableCell
                                             className='data-view-header-cell'
@@ -464,19 +612,28 @@ export const SelectableDataGrid: React.FC<SelectableDataGridProps> = ({
                             <>
                                 {columnDefs.map((column, colIndex) => {
                                     let backgroundColor = "rgba(255,255,255,0.05)";
-                                    // if (column.source == "custom") {
-                                    //     backgroundColor = alpha(theme.palette.custom.main, 0.03);
-                                    // } else {
-                                    //     backgroundColor = "rgba(255,255,255,0.05)";
-                                    // }
+                                    const rawValue = data[column.id];
+                                    const cellValue = column.id === "#rowId" && (rawValue === undefined || rawValue === null)
+                                        ? rowIndex + 1
+                                        : rawValue;
 
                                     return (
                                         <TableCell
                                             key={`col-${colIndex}-row-${rowIndex}`}
-                                            sx={{backgroundColor}}
-                                            align={column.align || 'left'}
+                                            sx={{
+                                                backgroundColor,
+                                                ...(column.id === "#rowId" && {
+                                                    width: column.width,
+                                                    maxWidth: column.width,
+                                                    minWidth: column.minWidth,
+                                                    color: 'rgba(0,0,0,0.4)',
+                                                    paddingLeft: '12px',
+                                                    paddingRight: 0,
+                                                })
+                                            }}
+                                            align={column.id === "#rowId" ? 'left' : (column.align || 'left')}
                                         >
-                                            {column.format ? column.format(data[column.id]) : data[column.id]}
+                                            {column.format ? column.format(cellValue) : cellValue}
                                         </TableCell>
                                     )
                                 })}

@@ -58,7 +58,7 @@ export const FreeDataViewFC: FC<FreeDataViewProps> = function DataView() {
         
         // Calculate appropriate column widths based on content
         const calculateColumnWidth = (name: string) => {
-            if (name === "#rowId") return { minWidth: 10, width: 40 }; // Default for row ID column
+            if (name === "#rowId") return { minWidth: 10, width: 28 }; // Default for row ID column
             
             // Get all values for this column from sampled rows
             const values = sampledRows.map(row => String(row[name] || ''));
@@ -82,21 +82,31 @@ export const FreeDataViewFC: FC<FreeDataViewProps> = function DataView() {
 
         let colDefs = targetTable ? targetTable.names.map((name, i) => {
             const { minWidth, width } = calculateColumnWidth(name);
+            const dataType = targetTable?.metadata[name].type as Type;
+            const isNumeric = dataType === Type.Number || dataType === Type.Integer;
             return {
                 id: name, 
                 label: name, 
                 minWidth, 
                 width, 
-                align: undefined, 
-                format: (value: any) => <Typography fontSize="inherit">{`${value}`}</Typography>, 
-                dataType: targetTable?.metadata[name].type as Type,
+                align: isNumeric ? 'right' as const : undefined, 
+                format: (value: any) => {
+                    if (isNumeric && value !== null && value !== undefined && value !== '') {
+                        const num = Number(value);
+                        if (!isNaN(num)) {
+                            return <Typography fontSize="inherit">{num.toLocaleString()}</Typography>;
+                        }
+                    }
+                    return <Typography fontSize="inherit">{`${value}`}</Typography>;
+                },
+                dataType,
                 source: conceptShelfItems.find(f => f.name == name)?.source || "original", 
             };
         }) : [];
 
-        if (colDefs && !targetTable?.virtual) {
+        if (colDefs) {
             colDefs = [{
-                id: "#rowId", label: "#", minWidth: 10, align: undefined, width: 40,
+                id: "#rowId", label: "#", minWidth: 10, align: undefined, width: 28,
                 format: (value: any) => <Typography fontSize="inherit" color="rgba(0,0,0,0.65)">{value}</Typography>, 
                 dataType: Type.Number,
                 source: "original", 
