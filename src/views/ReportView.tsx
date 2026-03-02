@@ -222,7 +222,7 @@ export const ReportView: FC = () => {
     const charts = useSelector((state: DataFormulatorState) => state.charts);
     const tables = useSelector((state: DataFormulatorState) => state.tables);
     const selectedModelId = useSelector((state: DataFormulatorState) => state.selectedModelId);
-    const models = useSelector((state: DataFormulatorState) => state.models);
+    const models = useSelector(dfSelectors.getAllModels);
     const conceptShelfItems = useSelector((state: DataFormulatorState) => state.conceptShelfItems);
     const config = useSelector((state: DataFormulatorState) => state.config);
     const allGeneratedReports = useSelector(dfSelectors.getAllGeneratedReports);

@@ -50,6 +50,8 @@ export interface ModelConfig {
     api_key?: string;
     api_base?: string;
     api_version?: string;
+    /** True for models configured server-side via .env. Their credentials never leave the server. */
+    is_global?: boolean;
 }
 
 
@@ -76,6 +78,13 @@ export interface DataFormulatorState {
     };
 
     sessionId: string | undefined;
+    /**
+     * Server-managed global models loaded from the backend on every app start.
+     * These are NOT persisted by redux-persist (blacklisted in store.ts) so they
+     * are always refreshed from the latest server configuration.
+     */
+    globalModels: ModelConfig[];
+    /** User-added models, persisted across browser sessions. */
     models: ModelConfig[];
     selectedModelId: string | undefined;
     testedModels: {id: string, status: 'ok' | 'error' | 'testing' | 'unknown', message: string}[];
@@ -131,6 +140,7 @@ const initialState: DataFormulatorState = {
     },
 
     sessionId: undefined,
+    globalModels: [],
     models: [],
     selectedModelId: undefined,
     testedModels: [],
@@ -1010,27 +1020,33 @@ export const dataFormulatorSlice = createSlice({
             }
         })
         .addCase(fetchAvailableModels.fulfilled, (state, action) => {
-            let defaultModels = action.payload;
+            // Server now returns all globally configured models, each with a
+            // "status" field: "connected" or "disconnected".
+            const serverModels: (ModelConfig & { status: string; error: string | null })[] = action.payload;
 
-            state.models = [
-                ...defaultModels, 
-                ...state.models.filter(e => !defaultModels.some((m: ModelConfig) => 
-                    m.endpoint === e.endpoint && m.model === e.model && 
-                    m.api_base === e.api_base && m.api_version === e.api_version
-                ))
+            // Replace globalModels entirely with the fresh server response.
+            // globalModels is blacklisted from redux-persist so it always
+            // reflects the latest server configuration after each app start.
+            state.globalModels = serverModels;
+
+            // Sync global model statuses into testedModels, replacing any
+            // stale entries while preserving user-model test results.
+            state.testedModels = [
+                ...serverModels.map(m => ({
+                    id: m.id,
+                    status: (m.status === 'connected' ? 'ok' : 'error') as 'ok' | 'error' | 'testing' | 'unknown',
+                    message: m.error ?? '',
+                })),
+                ...state.testedModels.filter(t => !serverModels.some(m => m.id === t.id)),
             ];
-            
-            state.testedModels = [ 
-                ...defaultModels.map((m: ModelConfig) => {return {id: m.id, status: 'ok'}}) ,
-                ...state.testedModels.filter(t => !defaultModels.map((m: ModelConfig) => m.id).includes(t.id))
-            ]
 
-            if (defaultModels.length > 0 && state.selectedModelId == undefined) {
-                state.selectedModelId = defaultModels[0].id;
+            // Auto-select the first connected global model when nothing is selected.
+            if (state.selectedModelId == undefined) {
+                const firstConnected = serverModels.find(m => m.status === 'connected');
+                if (firstConnected) {
+                    state.selectedModelId = firstConnected.id;
+                }
             }
-
-            // console.log("load model complete");
-            // console.log("state.models", state.models);
         })
         .addCase(fetchCodeExpl.fulfilled, (state, action) => {
             let codeExplResponse = action.payload;
@@ -1051,8 +1067,13 @@ export const dataFormulatorSlice = createSlice({
 })
 
 export const dfSelectors = {
-    getActiveModel: (state: DataFormulatorState) : ModelConfig => {
-        return state.models.find(m => m.id == state.selectedModelId) || state.models[0];
+    /** All models visible in the UI: global (server-managed) first, then user-added. */
+    getAllModels: (state: DataFormulatorState): ModelConfig[] => {
+        return [...(state.globalModels ?? []), ...state.models];
+    },
+    getActiveModel: (state: DataFormulatorState): ModelConfig => {
+        const all = [...(state.globalModels ?? []), ...state.models];
+        return all.find(m => m.id == state.selectedModelId) ?? all[0];
     },
     getActiveBaseTableIds: (state: DataFormulatorState) => {
         let focusedTableId = state.focusedTableId;

@@ -11,8 +11,10 @@ export type AppDispatch = typeof store.dispatch
 
 const persistConfig = {
     key: 'root',
-    //storage,
-    storage: localforage
+    storage: localforage,
+    // globalModels are always fetched fresh from the server on each app start,
+    // so there is no need (and it would cause stale-data issues) to persist them.
+    blacklist: ['globalModels'],
 }
 
 const persistedReducer = persistReducer(persistConfig, dataFormulatorReducer)

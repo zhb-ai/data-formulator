@@ -35,6 +35,7 @@ from data_formulator.agents.agent_code_explanation import CodeExplanationAgent
 from data_formulator.agents.agent_interactive_explore import InteractiveExploreAgent
 from data_formulator.agents.agent_report_gen import ReportGenAgent
 from data_formulator.agents.client_utils import Client
+from data_formulator.model_registry import model_registry
 
 from data_formulator.db_manager import db_manager
 from data_formulator.workflows.exploration_flow import run_exploration_flow_streaming
@@ -45,71 +46,64 @@ logger = logging.getLogger(__name__)
 agent_bp = Blueprint('agent', __name__, url_prefix='/api/agent')
 
 def get_client(model_config):
+    # For global models, resolve real credentials from the server-side registry.
+    # The frontend only knows the model id; the api_key never leaves the server.
+    if model_config.get("is_global"):
+        real_config = model_registry.get_config(model_config["id"])
+        if real_config:
+            model_config = real_config
+
     for key in model_config:
-        model_config[key] = model_config[key].strip()
+        if isinstance(model_config[key], str):
+            model_config[key] = model_config[key].strip()
 
     client = Client(
         model_config["endpoint"],
         model_config["model"],
-        model_config["api_key"] if "api_key" in model_config else None,
-        html.escape(model_config["api_base"]) if "api_base" in model_config else None,
-        model_config["api_version"] if "api_version" in model_config else None)
+        model_config.get("api_key") or None,
+        html.escape(model_config["api_base"]) if model_config.get("api_base") else None,
+        model_config.get("api_version") or None,
+    )
 
     return client
 
 
 @agent_bp.route('/check-available-models', methods=['GET', 'POST'])
 def check_available_models():
+    """
+    Return all globally configured models with their connectivity status.
+
+    Previously only reachable models were returned, causing the frontend to
+    silently omit unreachable entries.  Now every configured model is included
+    so the frontend can show a clear connected / disconnected indicator.
+    Sensitive credentials (api_key) are never sent to the client.
+    """
     results = []
-    
-    # Define configurations for different providers
-    providers = ['openai', 'azure', 'anthropic', 'gemini', 'ollama']
 
-    for provider in providers:
-        # Skip if provider is not enabled
-        if not os.getenv(f"{provider.upper()}_ENABLED", "").lower() == "true":
-            continue
-        
-        api_key = os.getenv(f"{provider.upper()}_API_KEY", "")
-        api_base = os.getenv(f"{provider.upper()}_API_BASE", "")
-        api_version = os.getenv(f"{provider.upper()}_API_VERSION", "")
-        models = os.getenv(f"{provider.upper()}_MODELS", "")
+    for public_info in model_registry.list_public():
+        full_config = model_registry.get_config(public_info["id"])
+        status = "disconnected"
+        error = None
 
-        if not (api_key or api_base):
-            continue
+        try:
+            client = get_client(full_config)
+            response = client.get_completion(
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": "Respond 'I can hear you.' if you can hear me."},
+                ]
+            )
+            if "I can hear you." in response.choices[0].message.content:
+                status = "connected"
+        except Exception as e:
+            # Log the full error server-side (may contain credentials) but only
+            # send a generic message to the frontend so that API keys embedded
+            # in provider error responses are never leaked to end users.
+            logger.warning(f"Model connectivity check failed for {public_info['id']}: {e}")
+            error = "无法连接，请联系管理员检查服务端配置"
 
-        if not models:
-            continue
+        results.append({**public_info, "status": status, "error": error})
 
-        # Build config for each model
-        for model in models.split(","):
-            model = model.strip()
-            if not model:
-                continue
-
-            model_config = {
-                "id": f"{provider}-{model}-{api_key}-{api_base}-{api_version}",
-                "endpoint": provider,
-                "model": model,
-                "api_key": api_key,
-                "api_base": api_base,
-                "api_version": api_version
-            }
-            
-            try:
-                client = get_client(model_config)
-                response = client.get_completion(
-                    messages=[
-                        {"role": "system", "content": "You are a helpful assistant."},
-                        {"role": "user", "content": "Respond 'I can hear you.' if you can hear me."},
-                    ]
-                )
-                
-                if "I can hear you." in response.choices[0].message.content:
-                    results.append(model_config)
-            except Exception as e:
-                print(f"Error testing {provider} model {model}: {e}")
-                
     return json.dumps(results)
 
 def sanitize_model_error(error_message: str) -> str:
@@ -156,12 +150,13 @@ def test_model():
                     "message": ""
                 }
         except Exception as e:
-            print(f"Error: {e}")
-            logger.info(f"Error: {e}")
+            logger.warning(f"Error testing model {content['model'].get('id', '')}: {e}")
+            is_global = content['model'].get('is_global', False)
             result = {
                 "model": content['model'],
                 "status": 'error',
-                "message": sanitize_model_error(str(e)),
+                "message": "无法连接，请联系管理员检查服务端配置" if is_global
+                           else sanitize_model_error(str(e)),
             }
     else:
         result = {'status': 'error'}
@@ -512,14 +507,21 @@ def explore_data_streaming():
             logger.info("== exploration question ===")
             logger.info(initial_plan)
 
-            # Model config for the exploration flow
-            model_config = {
-                "endpoint": content['model']['endpoint'],
-                "model": content['model']['model'],
-                "api_key": content['model']['api_key'],
-                "api_base": content['model'].get('api_base', ''),
-                "api_version": content['model'].get('api_version', '')
-            }
+            # Model config for the exploration flow.
+            # For global models, resolve real credentials from the server-side
+            # registry so that api_key is never sent by the frontend.
+            raw_model = content['model']
+            if raw_model.get('is_global'):
+                resolved = model_registry.get_config(raw_model.get('id', ''))
+                model_config = resolved if resolved else raw_model
+            else:
+                model_config = {
+                    "endpoint": raw_model["endpoint"],
+                    "model": raw_model["model"],
+                    "api_key": raw_model.get("api_key", ""),
+                    "api_base": raw_model.get("api_base", ""),
+                    "api_version": raw_model.get("api_version", ""),
+                }
 
             session_id = session.get('session_id') if language == "sql" else None
             exec_python_in_subprocess = current_app.config['CLI_ARGS']['exec_python_in_subprocess']

@@ -32,6 +32,13 @@ APP_ROOT = Path(Path(__file__).parent).absolute()
 
 import os
 
+# Load env files BEFORE importing any blueprint that initialises module-level
+# singletons (e.g. model_registry).  If load_dotenv ran after the imports,
+# those singletons would read an empty environment and find no models.
+load_dotenv(os.path.join(APP_ROOT, "..", "..", 'api-keys.env'))
+load_dotenv(os.path.join(APP_ROOT, 'api-keys.env'))
+load_dotenv(os.path.join(APP_ROOT, '.env'))
+
 # blueprints
 from data_formulator.tables_routes import tables_bp
 from data_formulator.agent_routes import agent_bp
@@ -59,11 +66,6 @@ class CustomJSONEncoder(json.JSONEncoder):
         return super().default(obj)
 
 app.json_encoder = CustomJSONEncoder
-
-# Load env files early
-load_dotenv(os.path.join(APP_ROOT, "..", "..", 'api-keys.env'))
-load_dotenv(os.path.join(APP_ROOT, 'api-keys.env'))
-load_dotenv(os.path.join(APP_ROOT, '.env'))
 
 # Add this line to store args at app level
 app.config['CLI_ARGS'] = {

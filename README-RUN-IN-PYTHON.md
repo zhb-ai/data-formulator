@@ -1,7 +1,7 @@
 # DF（Data Formulator）Python 环境启动指南（非 Docker）
 
 > 适用于：`e:\GPT\superset` 当前项目结构  
-> 目标：不使用 Docker，直接在 Python 虚拟环境中启动 DF，并可按需接入 LiteLLM / Gateway。  
+> 目标：不使用 Docker，直接在 Python 虚拟环境中启动 DF，并可按需接入任意 AI 模型服务。  
 > 本指南默认本地开发；生产请参考非 Docker 部署文档并使用独立内部 token。
 
 ---
@@ -15,8 +15,8 @@
 
 推荐启动顺序（非 Docker）：
 
-1. 启动 LiteLLM Proxy（如需 AI 功能和密钥隔离）
-2. 启动 Data Formulator（Python）
+1. 创建 `api-keys.env`，填入模型配置（一次性操作）
+2. 启动 Data Formulator
 3. （可选）启动 Gateway 后端/前端做联调
 
 ---
@@ -36,169 +36,237 @@ $WORKSPACE = "e:\GPT\superset"
 
 ---
 
-## 3. 启动 DF（最小可用，不接 LiteLLM）
-
-先确认 DF 本体可运行。
+## 3. 启动 DF
 
 ```powershell
 cd $WORKSPACE\data-formulator
 
-# 1) 创建并激活 Conda 环境（推荐）
+# 1) 创建并激活 Conda 环境（首次）
 conda create -n data-formulator python=3.11
 conda activate data-formulator
 
-# 2) 安装本地源码（开发模式）
+# 2) 安装本地源码（开发模式，首次或代码有改动时执行）
 pip install -e .
 
 # 3) 启动 DF
 python -m data_formulator --port 5000
 ```
 
-访问：
+访问：`http://127.0.0.1:5000`
 
-- `http://127.0.0.1:5000`
-
-> 如果 5000 被占用，可改为：`python -m data_formulator --port 5001`
+> 如果 5000 被占用：`python -m data_formulator --port 5001`
 
 ---
 
-## 4. 推荐方式：DF + LiteLLM（非 Docker）
+## 4. 配置模型（核心）
 
-如果你不希望在浏览器端暴露真实厂商 Key，建议按此方案。
+DF 启动时会自动加载 `data-formulator/api-keys.env`。**所有模型的 API Key 仅存在服务端，不会发送到浏览器前端。**
 
-### 4.1 终端 A：启动 LiteLLM Proxy
+前端打开后，模型选择面板会自动显示所有已配置的模型，并以绿色（可连接）/ 红色（无法连接）标识连通状态。
+
+### 4.1 配置文件位置
+
+```
+data-formulator/
+└── api-keys.env          ← 放这里，DF 自动加载，优先级最高
+```
+
+> 这个文件已在 `.gitignore` 中，不会被提交到 Git。
+
+### 4.2 配置格式说明
+
+每个模型服务商用一组独立的环境变量配置，**变量名前缀可以自由命名**（只要全大写即可），不需要改任何代码。
+
+| 变量名 | 必填 | 说明 |
+|---|---|---|
+| `{NAME}_ENABLED` | ✅ | `true` 表示启用此服务商 |
+| `{NAME}_ENDPOINT` | ✅ | 调用类型：OpenAI 兼容填 `openai`；内置厂商（anthropic/gemini 等）可省略 |
+| `{NAME}_API_KEY` | ✅ | 该服务商的 API 密钥 |
+| `{NAME}_API_BASE` | 视情况 | API 地址（官方 OpenAI 可省略，其他一般都要填） |
+| `{NAME}_API_VERSION` | ❌ | 仅 Azure 需要 |
+| `{NAME}_MODELS` | ✅ | 模型名称，多个用英文逗号分隔 |
+
+### 4.3 当前配置（DeepSeek + Qwen）
+
+```ini
+# data-formulator/api-keys.env
+
+# DeepSeek（OpenAI 兼容格式）
+DEEPSEEK_ENABLED=true
+DEEPSEEK_ENDPOINT=openai
+DEEPSEEK_API_KEY=你的DeepSeek密钥
+DEEPSEEK_API_BASE=https://api.deepseek.com
+DEEPSEEK_MODELS=deepseek-chat
+
+# 阿里云百炼 / Qwen（OpenAI 兼容格式）
+QWEN_ENABLED=true
+QWEN_ENDPOINT=openai
+QWEN_API_KEY=你的阿里云API密钥
+QWEN_API_BASE=https://dashscope.aliyuncs.com/compatible-mode/v1
+QWEN_MODELS=qwen3-omni-flash
+```
+
+### 4.4 添加更多模型服务商（无需改代码）
+
+只要服务商支持 OpenAI 兼容接口（`/v1/chat/completions`），照下面格式追加即可，**前缀名随意取**：
+
+**示例：添加 Moonshot（月之暗面）**
+
+```ini
+MOONSHOT_ENABLED=true
+MOONSHOT_ENDPOINT=openai
+MOONSHOT_API_KEY=sk-你的moonshot密钥
+MOONSHOT_API_BASE=https://api.moonshot.cn/v1
+MOONSHOT_MODELS=moonshot-v1-8k,moonshot-v1-32k
+```
+
+**示例：添加 Groq（超高速推理）**
+
+```ini
+GROQ_ENABLED=true
+GROQ_ENDPOINT=openai
+GROQ_API_KEY=gsk_你的groq密钥
+GROQ_API_BASE=https://api.groq.com/openai/v1
+GROQ_MODELS=llama-3.3-70b-versatile,mixtral-8x7b-32768
+```
+
+**示例：添加 OpenAI 官方**
+
+```ini
+OPENAI_ENABLED=true
+OPENAI_API_KEY=sk-你的openai密钥
+OPENAI_MODELS=gpt-4o,gpt-4o-mini
+```
+
+> `openai` 是内置厂商，省略 `OPENAI_ENDPOINT` 和 `OPENAI_API_BASE`（使用官方地址）。
+
+**示例：内网自建 / vLLM / Ollama 等**
+
+```ini
+# vLLM 自建
+VLLM_ENABLED=true
+VLLM_ENDPOINT=openai
+VLLM_API_KEY=any-key
+VLLM_API_BASE=http://你的vllm地址:8000/v1
+VLLM_MODELS=Qwen2.5-72B-Instruct
+
+# Ollama 本地（内置厂商）
+OLLAMA_ENABLED=true
+OLLAMA_API_BASE=http://localhost:11434
+OLLAMA_MODELS=llama3.2,qwen2.5
+```
+
+**示例：Anthropic Claude（内置厂商）**
+
+```ini
+ANTHROPIC_ENABLED=true
+ANTHROPIC_API_KEY=sk-ant-你的密钥
+ANTHROPIC_MODELS=claude-3-5-sonnet-20241022,claude-3-haiku-20240307
+```
+
+**示例：Google Gemini（内置厂商）**
+
+```ini
+GEMINI_ENABLED=true
+GEMINI_API_KEY=AIza你的密钥
+GEMINI_MODELS=gemini-2.0-flash,gemini-1.5-pro
+```
+
+**示例：Azure OpenAI（内置厂商）**
+
+```ini
+AZURE_ENABLED=true
+AZURE_API_KEY=你的azure密钥
+AZURE_API_BASE=https://你的资源名.openai.azure.com
+AZURE_API_VERSION=2025-04-01-preview
+AZURE_MODELS=gpt-4o,gpt-4o-mini
+```
+
+### 4.5 同一服务商配置多组接入点
+
+如果你需要同一厂商的两个不同账号/地区，直接用不同前缀即可：
+
+```ini
+DEEPSEEK_PROD_ENABLED=true
+DEEPSEEK_PROD_ENDPOINT=openai
+DEEPSEEK_PROD_API_KEY=sk-生产账号密钥
+DEEPSEEK_PROD_API_BASE=https://api.deepseek.com
+DEEPSEEK_PROD_MODELS=deepseek-chat
+
+DEEPSEEK_TEST_ENABLED=true
+DEEPSEEK_TEST_ENDPOINT=openai
+DEEPSEEK_TEST_API_KEY=sk-测试账号密钥
+DEEPSEEK_TEST_API_BASE=https://api.deepseek.com
+DEEPSEEK_TEST_MODELS=deepseek-reasoner
+```
+
+### 4.6 配置生效
+
+修改 `api-keys.env` 后，**重启 DF** 即可生效：
+
+```powershell
+# Ctrl+C 停止当前 DF，然后重启
+python -m data_formulator --port 5000
+```
+
+重启后，浏览器打开模型选择面板，所有配置的模型都会显示（含连通状态）。
+
+---
+
+## 5. （可选）通过 LiteLLM Proxy 中转
+
+如果你希望通过统一网关中转所有模型请求（例如做日志审计、限速、多租户），也可以继续使用 LiteLLM Proxy，然后在 `api-keys.env` 里只配置一个 `OPENAI_*` 指向本地代理：
+
+```ini
+# 走 LiteLLM Proxy
+OPENAI_ENABLED=true
+OPENAI_API_KEY=sk-litellm-master-key-2024
+OPENAI_API_BASE=http://127.0.0.1:4000/v1
+OPENAI_MODELS=deepseek-chat,qwen3-omni-flash
+```
+
+启动 LiteLLM Proxy：
 
 ```powershell
 cd $WORKSPACE\superset-df-integration
-
-# 首次安装（建议在单独 venv 内）
 pip install "litellm[proxy]"
-
-# 按你的实际情况填写
-$env:QWEN_API_KEY="<你的QwenKey>"
-$env:QWEN_API_BASE="http://<你的vllm地址>:8000/v1"
-$env:DEEPSEEK_API_KEY="<你的DeepSeekKey>"
-$env:LITELLM_MASTER_KEY="sk-litellm-master-key-2024"
-
-# 使用 runtime 配置，避免 Windows 下可能的编码问题
 litellm --config "config\litellm_config.runtime.yaml" --host 127.0.0.1 --port 4000
 ```
 
-健康检查（新开终端）：
+健康检查：
 
 ```powershell
 Invoke-WebRequest http://127.0.0.1:4000/health -UseBasicParsing
 ```
 
-### 4.2 终端 B：启动 DF（指向 LiteLLM）
-
-`OPENAI_API_KEY` 推荐按场景区分：
-
-- 快速验证：可先使用 `LITELLM_MASTER_KEY`，方便快速联通
-- 正式使用：改为 LiteLLM 生成的 `virtual/internal key`（最小权限，推荐）
-
-#### 方式 A：`api-keys.env` 文件（推荐，一劳永逸）
-
-在 `data-formulator/api-keys.env` 中写入配置，DF 启动时会自动加载，无需每次手动设环境变量。
-
-```ini
-# data-formulator/api-keys.env
-OPENAI_ENABLED=true
-OPENAI_API_KEY=sk-litellm-master-key-2024
-OPENAI_API_BASE=http://127.0.0.1:4000/v1
-OPENAI_MODELS=qwen3-14b,deepseek-chat
-```
-
-> **自动加载原理**：DF 的 `app.py` 启动时会依次加载：
-> 1. `data-formulator/api-keys.env`（即 `APP_ROOT/../../api-keys.env`）
-> 2. `data-formulator/py-src/data_formulator/api-keys.env`
-> 3. `data-formulator/py-src/data_formulator/.env`
->
-> 只需在第 1 个路径放文件即可。**不要把此文件提交到 Git**（已在 `.gitignore` 模板中）。
-
-配置好后，直接启动即可：
-
-```powershell
-cd $WORKSPACE\data-formulator
-conda activate data-formulator
-python -m data_formulator --port 5000
-```
-
-#### 方式 B：手动设环境变量
-
-如果不想创建文件，也可以在每次启动前手动设置。
-
-**PowerShell 版本：**
-
-```powershell
-cd $WORKSPACE\data-formulator
-conda activate data-formulator
-
-$env:OPENAI_ENABLED="true"
-$env:OPENAI_API_KEY="sk-litellm-master-key-2024"
-$env:OPENAI_API_BASE="http://127.0.0.1:4000/v1"
-$env:OPENAI_MODELS="qwen3-14b,deepseek-chat"
-
-python -m data_formulator --port 5000
-```
-
-**CMD 版本（注意 `set` 等号前后不能有空格）：**
-
-```cmd
-cd /d %WORKSPACE%\data-formulator
-conda activate data-formulator
-
-set OPENAI_ENABLED=true
-set OPENAI_API_KEY=sk-litellm-master-key-2024
-set OPENAI_API_BASE=http://127.0.0.1:4000/v1
-set OPENAI_MODELS=qwen3-14b,deepseek-chat
-
-python -m data_formulator --port 5000
-```
-
-> **CMD vs PowerShell**：Conda 激活后默认进入 cmd.exe，此时 `$env:` 语法不可用，必须用 `set`。
-
-访问：
-
-- `http://127.0.0.1:5000`
-
 ---
 
-## 5. 与 `superset-df-integration` 联调（可选）
+## 6. 与 `superset-df-integration` 联调（可选）
 
-如果你要让 Gateway 连接本地 DF，请检查：
-
-`e:\GPT\superset\superset-df-integration\.env`
+检查 `e:\GPT\superset\superset-df-integration\.env`：
 
 ```ini
 SUPERSET_URL=http://localhost:8088
 DF_URL=http://127.0.0.1:5000
-
-# Gateway AI 走 LiteLLM（可选但推荐）
-LLM_API_KEY=sk-litellm-master-key-2024
+LLM_API_KEY=你的密钥
 LLM_BASE_URL=http://127.0.0.1:4000/v1
-LLM_MODEL=qwen3-14b
+LLM_MODEL=deepseek-chat
 ```
 
-然后按需启动 Gateway：
+启动 Gateway：
 
 ```powershell
 # 终端 C：Gateway 后端
 cd $WORKSPACE\superset-df-integration\gateway-service
-conda create -n gateway-service python=3.11
 conda activate gateway-service
-pip install -r requirements.txt
 python run.py
-```
 
-```powershell
 # 终端 D：Gateway 前端（开发模式）
 cd $WORKSPACE\superset-df-integration\gateway-frontend
-npm install
 npm run dev
 ```
 
-访问（开发模式）：
+访问：
 
 - Gateway 前端：`http://localhost:3001`
 - DF：`http://127.0.0.1:5000`
@@ -206,27 +274,13 @@ npm run dev
 
 ---
 
-## 6. 常见问题
+## 7. 常见问题
 
-### 6.1 DF 打开后模型列表为空
+### 7.1 前端模型面板打开后显示"无法连接"（红色）
 
-DF 前端启动时会调用 `/api/agent/check-available-models` 自动检测可用模型。如果模型列表为空，按以下步骤排查：
+这是正常现象——模型已配置，但连接测试失败。按以下步骤排查：
 
-**① 检查 LiteLLM 是否正常运行**
-
-```powershell
-# 端口是否在监听
-netstat -ano | findstr :4000 | findstr LISTENING
-
-# 模型列表是否正常返回（注意使用正确的 master key）
-Invoke-WebRequest -Uri "http://127.0.0.1:4000/v1/models" `
-  -Headers @{Authorization="Bearer sk-litellm-master-key-2024"} `
-  -UseBasicParsing | Select-Object -ExpandProperty Content
-```
-
-如果返回 `"No connected db."`，说明 token 不对，请核对 `LITELLM_MASTER_KEY`。
-
-**② 检查 DF 是否加载了环境变量**
+**① 直接调用后端接口查看详细状态**
 
 ```powershell
 Invoke-WebRequest -Uri "http://127.0.0.1:5000/api/agent/check-available-models" `
@@ -234,59 +288,92 @@ Invoke-WebRequest -Uri "http://127.0.0.1:5000/api/agent/check-available-models" 
   -UseBasicParsing | Select-Object -ExpandProperty Content
 ```
 
-- 返回 `[]`：DF 没有读到 `OPENAI_ENABLED` 等环境变量，请确认 `api-keys.env` 文件存在并**重启 DF**。
-- 返回包含模型的 JSON 数组：配置正确，刷新浏览器页面即可。
+返回示例：
+```json
+[
+  {
+    "id": "global-deepseek-deepseek-chat",
+    "endpoint": "openai",
+    "model": "deepseek-chat",
+    "status": "disconnected",
+    "error": "Connection timeout"
+  }
+]
+```
 
-**③ 常见错误原因**
+`status: "disconnected"` + `error` 字段会告诉你具体原因。
+
+**② 常见错误原因**
 
 | 现象 | 原因 |
-|------|------|
-| CMD 中 `$env:OPENAI_ENABLED = "true"` 报错 | Conda 激活后是 cmd.exe，应使用 `set OPENAI_ENABLED=true` |
-| `set` 命令设了变量但 DF 还是返回 `[]` | 可能 DF 在另一个终端启动，env 不共享；推荐用 `api-keys.env` 文件 |
-| LiteLLM 返回 `No connected db.` | `OPENAI_API_KEY` 与 `LITELLM_MASTER_KEY` 不一致 |
+|---|---|
+| `Connection timeout` / `Connection refused` | 网络不通，或 API 地址填错 |
+| `401 Unauthorized` | API Key 错误或已过期 |
+| 返回 `[]`（空数组） | `api-keys.env` 没被读到，检查文件路径和 `_ENABLED=true` |
+| 重启后仍无变化 | 文件可能有 BOM 或编码问题，用 UTF-8（无 BOM）保存 |
 
-### 6.2 Windows 下 LiteLLM 编码报错
+### 7.2 配置了模型但前端列表为空
 
-若出现 `UnicodeDecodeError (gbk)`，请使用：
+```powershell
+# 确认 DF 读到了配置
+Invoke-WebRequest -Uri "http://127.0.0.1:5000/api/agent/check-available-models" `
+  -Method POST -Body '{"token":1}' -ContentType "application/json" `
+  -UseBasicParsing | Select-Object -ExpandProperty Content
+```
 
-- `config/litellm_config.runtime.yaml`
+- 返回 `[]`：`api-keys.env` 未被加载。确认文件在 `data-formulator/api-keys.env`，且对应 `{NAME}_ENABLED=true`，然后**重启 DF**。
+- 返回有内容但前端不显示：强制刷新浏览器（`Ctrl+Shift+R`）。
 
-不要用含非 ASCII 内容的配置文件。
+### 7.3 Windows 下 PowerShell 设环境变量后无效
 
-### 6.3 端口冲突
+推荐直接用 `api-keys.env` 文件，不要用临时环境变量。若一定要用临时变量：
+
+```powershell
+# PowerShell
+$env:DEEPSEEK_ENABLED = "true"
+$env:DEEPSEEK_API_KEY  = "sk-..."
+```
+
+```cmd
+:: CMD（Conda 激活后默认）
+set DEEPSEEK_ENABLED=true
+set DEEPSEEK_API_KEY=sk-...
+```
+
+> `$env:` 语法只在 PowerShell 中有效；Conda 激活后是 cmd.exe，应使用 `set`。
+
+### 7.4 端口冲突
 
 ```powershell
 netstat -ano | findstr :5000
 netstat -ano | findstr :4000
 ```
 
-然后更换端口或结束冲突进程。
+改端口或结束冲突进程后重试。
 
-### 6.4 LiteLLM 只允许本机访问
+### 7.5 Windows 下 LiteLLM 编码报错
 
-保持：
+若出现 `UnicodeDecodeError (gbk)`，使用：
 
-```bash
---host 127.0.0.1
+```
+config/litellm_config.runtime.yaml
 ```
 
-这是本地非 Docker 场景下的重要安全建议。
+不要使用含非 ASCII 内容的配置文件。
 
 ---
 
-## 7. 停止服务与退出环境
+## 8. 停止服务与退出环境
 
-- 停止 DF / LiteLLM：在对应终端按 `Ctrl+C`
-- 退出虚拟环境：执行 `deactivate`
+- 停止 DF：在对应终端按 `Ctrl+C`
+- 退出虚拟环境：`conda deactivate`
 
 ---
 
-## 8. 一键回顾（最短路径）
+## 9. 一键回顾（最短路径）
 
-1. `data-formulator` 建 Conda 环境 + `pip install -e .`
-2. 启动 LiteLLM：`127.0.0.1:4000`
-3. 创建 `data-formulator/api-keys.env`（内容见 4.2 方式 A）
+1. `conda create -n data-formulator python=3.11 && conda activate data-formulator`
+2. `cd data-formulator && pip install -e .`
+3. 创建 `data-formulator/api-keys.env`，填入至少一个模型（见第 4 节）
 4. `python -m data_formulator --port 5000`
-5. 浏览器打开 `http://127.0.0.1:5000`，模型应自动出现在列表中
-
-以上流程即可在 **不使用 Docker** 的前提下稳定运行 DF，并保留 AI 密钥隔离能力。
+5. 浏览器打开 `http://127.0.0.1:5000`，点击模型选择按钮，绿色的即可使用

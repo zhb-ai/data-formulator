@@ -140,8 +140,8 @@ export function MessageSnackbar() {
                 <IconButton 
                     color={buttonSeverity === "default" ? "default" : buttonSeverity}
                     sx={{
-                        width: 32,
-                        height: 32,
+                        width: 30,
+                        height: 30,
                         backgroundColor: 'white',
                         border: '1px solid',
                         borderColor: buttonSeverity === "default" ? 'grey.400' : `${buttonSeverity}.main`,
@@ -155,10 +155,10 @@ export function MessageSnackbar() {
                     }}
                     onClick={() => setOpenMessages(true)}
                 >
-                    {buttonSeverity === "error" ? <ErrorOutlineIcon sx={{fontSize: 22}}/> :
-                     buttonSeverity === "warning" ? <WarningIcon sx={{fontSize: 22}}/> :
-                     buttonSeverity === "success" ? <CheckCircleIcon sx={{fontSize: 22}}/> :
-                     <InfoIcon sx={{fontSize: 22}}/>}
+                    {buttonSeverity === "error" ? <ErrorOutlineIcon sx={{fontSize: 20}}/> :
+                     buttonSeverity === "warning" ? <WarningIcon sx={{fontSize: 20}}/> :
+                     buttonSeverity === "success" ? <CheckCircleIcon sx={{fontSize: 20}}/> :
+                     <InfoIcon sx={{fontSize: 20}}/>}
                 </IconButton>
             </Tooltip>
             <Snackbar
