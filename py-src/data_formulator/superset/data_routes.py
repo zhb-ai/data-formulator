@@ -15,6 +15,7 @@ import time
 
 import pandas as pd
 from flask import Blueprint, Response, current_app, jsonify, request, session, stream_with_context
+from requests.exceptions import HTTPError
 
 from data_formulator.db_manager import db_manager
 
@@ -24,14 +25,35 @@ superset_data_bp = Blueprint("superset_data", __name__, url_prefix="/api/superse
 
 
 def _is_token_expired(token: str, buffer_seconds: int = 60) -> bool:
-    """Decode the JWT exp claim and check if it's expired (or about to)."""
+    """Decode the JWT exp claim and check if it's expired (or about to).
+    Returns True on parse failure (conservative: prefer refresh over stale use)."""
     try:
         payload = token.split(".")[1]
         payload += "=" * (-len(payload) % 4)
         claims = json.loads(base64.urlsafe_b64decode(payload))
         return time.time() > claims.get("exp", 0) - buffer_seconds
     except Exception:
-        return False
+        return True
+
+
+def _try_refresh() -> str | None:
+    """Attempt to refresh the Superset access_token.  Returns the new token
+    on success, or None on failure."""
+    refresh_tok = session.get("superset_refresh_token")
+    if not refresh_tok:
+        logger.warning("Superset access_token 已过期且无 refresh_token")
+        return None
+    try:
+        bridge = current_app.extensions["superset_bridge"]
+        result = bridge.refresh_token(refresh_tok)
+        new_token = result.get("access_token")
+        if new_token:
+            session["superset_token"] = new_token
+            logger.info("Superset access_token 已自动刷新")
+            return new_token
+    except Exception as e:
+        logger.warning("Superset token 刷新失败: %s", e)
+    return None
 
 
 def _require_auth():
@@ -41,21 +63,8 @@ def _require_auth():
         return None, None
 
     if _is_token_expired(token):
-        refresh_tok = session.get("superset_refresh_token")
-        if refresh_tok:
-            try:
-                bridge = current_app.extensions["superset_bridge"]
-                result = bridge.refresh_token(refresh_tok)
-                new_token = result.get("access_token")
-                if new_token:
-                    session["superset_token"] = new_token
-                    token = new_token
-                    logger.info("Superset access_token 已自动刷新")
-            except Exception as e:
-                logger.warning("Superset token 刷新失败: %s", e)
-                return None, None
-        else:
-            logger.warning("Superset access_token 已过期且无 refresh_token")
+        token = _try_refresh()
+        if not token:
             return None, None
 
     return token, user
@@ -95,6 +104,19 @@ def load_dataset():
 
     try:
         detail = superset_client.get_dataset_detail(token, dataset_id)
+    except HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 401:
+            logger.info("Superset API 返回 401，尝试刷新 token 后重试")
+            token = _try_refresh()
+            if token:
+                try:
+                    detail = superset_client.get_dataset_detail(token, dataset_id)
+                except Exception as retry_err:
+                    return jsonify({"status": "error", "message": f"Superset 认证失败，请重新登录: {retry_err}"}), 401
+            else:
+                return jsonify({"status": "error", "message": "Superset 认证已过期，请重新登录"}), 401
+        else:
+            return jsonify({"status": "error", "message": f"Failed to fetch dataset detail: {exc}"}), 502
     except Exception as exc:
         return jsonify({"status": "error", "message": f"Failed to fetch dataset detail: {exc}"}), 500
 
