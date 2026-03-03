@@ -78,14 +78,12 @@ const ColumnChip: FC<{ columns: string[] }> = ({ columns }) => {
         />
     );
 
-    if (!truncated) return chip;
-
     return (
         <Tooltip
             title={
-                <Box sx={{ maxWidth: 360, fontSize: 11, lineHeight: 1.5 }}>
+                <Box sx={{ maxWidth: 360, fontSize: 11, lineHeight: 1.8 }}>
                     {columns.map((col, i) => (
-                        <span key={i}>{col}{i < columns.length - 1 ? ', ' : ''}</span>
+                        <div key={i}>{col}</div>
                     ))}
                 </Box>
             }
@@ -293,12 +291,9 @@ export const SupersetCatalog: FC<SupersetCatalogProps> = ({ onDatasetLoaded }) =
                                     </Tooltip>
                                 )}
                                 <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
-                                    <Chip
-                                        size="small"
-                                        variant="outlined"
-                                        label={`${ds.database}.${ds.schema}`}
-                                        sx={{ fontSize: 10, height: 18, color: 'text.secondary', borderColor: 'divider' }}
-                                    />
+                                    <Typography variant="caption" sx={{ fontSize: 10, color: 'text.secondary' }}>
+                                        {`${ds.database}.${ds.schema}`}
+                                    </Typography>
                                     {ds.row_count != null && (
                                         <Chip
                                             size="small"

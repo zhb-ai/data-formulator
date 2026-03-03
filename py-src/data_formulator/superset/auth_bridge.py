@@ -50,11 +50,15 @@ class SupersetAuthBridge:
             logger.debug("Token validation failed", exc_info=True)
             return None
 
-    def refresh_token(self, refresh_token: str) -> dict:
-        """Exchange a refresh token for a new access token."""
+    def refresh_token(self, refresh_tok: str) -> dict:
+        """Exchange a refresh token for a new access token.
+
+        Superset (flask-jwt-extended) expects the refresh token as a
+        Bearer header, not in the JSON body.
+        """
         resp = requests.post(
             f"{self.superset_url}/api/v1/security/refresh",
-            json={"refresh_token": refresh_token},
+            headers={"Authorization": f"Bearer {refresh_tok}"},
             timeout=self.timeout,
         )
         resp.raise_for_status()
