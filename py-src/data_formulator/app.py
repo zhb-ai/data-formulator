@@ -35,7 +35,10 @@ import os
 # Load env files BEFORE importing any blueprint that initialises module-level
 # singletons (e.g. model_registry).  If load_dotenv ran after the imports,
 # those singletons would read an empty environment and find no models.
-load_dotenv(os.path.join(APP_ROOT, "..", "..", 'api-keys.env'))
+# PROJECT_ROOT = data-formulator/  (two levels up from py-src/data_formulator/)
+_PROJECT_ROOT = Path(APP_ROOT, "..", "..").resolve()
+load_dotenv(os.path.join(_PROJECT_ROOT, '.env'))
+load_dotenv(os.path.join(_PROJECT_ROOT, 'api-keys.env'))
 load_dotenv(os.path.join(APP_ROOT, 'api-keys.env'))
 load_dotenv(os.path.join(APP_ROOT, '.env'))
 
@@ -50,8 +53,42 @@ import queue
 from typing import Dict, Any
 
 app = Flask(__name__, static_url_path='', static_folder=os.path.join(APP_ROOT, "dist"))
-app.secret_key = secrets.token_hex(16)  # Generate a random secret key for sessions
+
+
+def _get_stable_secret_key() -> str:
+    """Return a persistent Flask secret key.
+
+    If FLASK_SECRET_KEY is already set (via .env or environment), use it
+    directly.  Otherwise auto-generate one and append it to the project
+    root .env so it survives server restarts — keeping anonymous user
+    sessions (and their DuckDB databases) intact.
+    """
+    env_key = os.environ.get('FLASK_SECRET_KEY', '').strip()
+    if env_key:
+        return env_key
+
+    new_key = secrets.token_hex(32)
+    env_file = _PROJECT_ROOT / '.env'
+    try:
+        existing = env_file.read_text(encoding='utf-8') if env_file.exists() else ''
+        sep = '' if existing.endswith('\n') or not existing else '\n'
+        env_file.write_text(
+            existing + f'{sep}\nFLASK_SECRET_KEY={new_key}\n',
+            encoding='utf-8',
+        )
+    except OSError:
+        pass
+    os.environ['FLASK_SECRET_KEY'] = new_key
+    return new_key
+
+
+app.secret_key = _get_stable_secret_key()
 app.json.sort_keys = False
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    PERMANENT_SESSION_LIFETIME=60 * 60 * 24 * 365,  # 365 days
+)
 
 # Initialize rate limiter for demo stream routes that call external APIs
 # The limiter is defined in demo_stream_routes.py to avoid circular imports
@@ -75,6 +112,8 @@ app.config['CLI_ARGS'] = {
     'disable_file_upload': os.environ.get('DISABLE_FILE_UPLOAD', 'false').lower() == 'true',
     'project_front_page': os.environ.get('PROJECT_FRONT_PAGE', 'false').lower() == 'true'
 }
+app.config['SUPERSET_URL'] = os.environ.get('SUPERSET_URL', '')
+app.config['SUPERSET_ENABLED'] = bool(app.config['SUPERSET_URL'])
 
 # register blueprints
 # Only register tables blueprint if database is not disabled
@@ -82,6 +121,32 @@ if not app.config['CLI_ARGS']['disable_database']:
     app.register_blueprint(tables_bp)
 app.register_blueprint(agent_bp)
 app.register_blueprint(demo_stream_bp)
+
+# Superset integration blueprints (only when SUPERSET_URL is configured)
+if app.config['SUPERSET_ENABLED']:
+    from data_formulator.superset.auth_bridge import SupersetAuthBridge
+    from data_formulator.superset.auth_routes import auth_bp
+    from data_formulator.superset.superset_client import SupersetClient
+    from data_formulator.superset.catalog import SupersetCatalog
+    from data_formulator.superset.catalog_routes import catalog_bp
+    from data_formulator.superset.data_routes import superset_data_bp
+
+    bridge = SupersetAuthBridge(app.config['SUPERSET_URL'])
+    app.extensions["superset_bridge"] = bridge
+
+    superset_client = SupersetClient(app.config['SUPERSET_URL'])
+    app.extensions["superset_client"] = superset_client
+
+    catalog_ttl = int(os.environ.get('CATALOG_CACHE_TTL', '300'))
+    catalog = SupersetCatalog(superset_client, cache_ttl=catalog_ttl)
+    app.extensions["superset_catalog"] = catalog
+
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(catalog_bp)
+    app.register_blueprint(superset_data_bp)
+else:
+    from data_formulator.superset.auth_routes import auth_bp
+    app.register_blueprint(auth_bp)
 
 # Get logger for this module (logging config moved to run_app function)
 logger = logging.getLogger(__name__)
@@ -104,6 +169,30 @@ def configure_logging():
     app.logger.handlers = []
     for handler in logging.getLogger().handlers:
         app.logger.addHandler(handler)
+
+
+OPEN_ENDPOINTS = frozenset([
+    '/api/get-session-id',
+    '/api/app-config',
+    '/api/example-datasets',
+    '/api/agent/check-available-models',
+    '/api/hello',
+    '/api/hello-stream',
+    '/api/auth/login',
+    '/api/auth/me',
+    '/api/auth/logout',
+])
+
+@app.before_request
+def enforce_session():
+    """Reject requests to protected endpoints when no valid session exists."""
+    path = request.path
+    if path.startswith('/api/') and path not in OPEN_ENDPOINTS:
+        if 'session_id' not in session:
+            return flask.jsonify({
+                "status": "error",
+                "message": "No session ID found. Please visit the app first."
+            }), 401
 
 
 @app.route('/api/example-datasets')
@@ -169,60 +258,69 @@ def streamed_response():
 
 @app.route('/api/get-session-id', methods=['GET', 'POST'])
 def get_session_id():
-    """Endpoint to get or confirm a session ID from the client"""
-    # if it is a POST request, we expect a session_id in the body
-    # if it is a GET request, we do not expect a session_id in the query params
-    
-    current_session_id = None
-    if request.is_json:
-        content = request.get_json()
-        current_session_id = content.get("session_id", None)
-    
-    # Check if database is disabled
+    """Return the server-controlled session ID.
+
+    The session ID is always generated server-side and stored in a
+    HttpOnly cookie.  The client MUST NOT be able to choose or override
+    its own session ID — doing so would allow one user to access another
+    user's DuckDB database file.
+
+    However, when a session cookie has expired but the client still holds
+    a previous session_id in localStorage, the client may send it via
+    ``recover_session_id`` in the JSON body.  The server will accept it
+    **only if** the corresponding DuckDB file already exists on disk,
+    preventing fabrication of arbitrary session IDs.
+    """
     database_disabled = app.config['CLI_ARGS']['disable_database']
-    
+
+    if 'session_id' not in session:
+        recovered = _try_recover_session(database_disabled)
+        if not recovered:
+            session['session_id'] = secrets.token_hex(16)
+            logger.info(f"Created new session: {session['session_id']}")
+        session.permanent = True
+
+    return flask.jsonify({
+        "status": "ok",
+        "session_id": session['session_id']
+    })
+
+
+def _try_recover_session(database_disabled: bool) -> bool:
+    """Try to restore a previous anonymous session from the client hint.
+
+    Returns True if the session was successfully recovered.
+    """
     if database_disabled:
-        # When database is disabled, don't use Flask sessions (cookies)
-        # Just return the provided session_id or generate a new one
-        if current_session_id is None:
-            current_session_id = secrets.token_hex(16)
-            logger.info(f"Generated session ID for disabled database: {current_session_id}")
-        else:
-            logger.info(f"Using provided session ID for disabled database: {current_session_id}")
-        
-        return flask.jsonify({
-            "status": "ok",
-            "session_id": current_session_id
-        })
-    else:
-        # When database is enabled, use Flask sessions (cookies) as before
-        old_session_id = session.get('session_id', None)
-        if current_session_id is None:    
-            if 'session_id' not in session:
-                session['session_id'] = secrets.token_hex(16)
-                session.permanent = True
-                logger.info(f"Created new session: {session['session_id']}")
-            else:
-                logger.info(f"Reusing existing session: {session['session_id']}")
-        else:
-            session['session_id'] = current_session_id
-            session.permanent = True
-            logger.info(f"Session override: {old_session_id} → {current_session_id}")
-        
-        return flask.jsonify({
-            "status": "ok",
-            "session_id": session['session_id']
-        })
+        return False
+
+    data = request.get_json(silent=True) or {}
+    candidate = (data.get("recover_session_id") or "").strip()
+    if not candidate:
+        return False
+
+    # Only allow hex-style anonymous session IDs (32 hex chars)
+    if not all(c in "0123456789abcdef" for c in candidate) or len(candidate) != 32:
+        logger.warning("Rejected session recovery: invalid format")
+        return False
+
+    db_dir = db_manager._local_db_dir or __import__("tempfile").gettempdir()
+    db_path = os.path.join(db_dir, f"df_{candidate}.duckdb")
+    if os.path.isfile(db_path):
+        session['session_id'] = candidate
+        logger.info(f"Recovered session from localStorage: {candidate}")
+        return True
+
+    logger.info(f"Session recovery failed — no DB file for: {candidate}")
+    return False
 
 @app.route('/api/app-config', methods=['GET'])
 def get_app_config():
     """Provide frontend configuration settings from CLI arguments"""
     args = app.config['CLI_ARGS']
     
-    # When database is disabled, don't try to access session
-    session_id = None
-    if not args['disable_database']:
-        session_id = session.get('session_id', None)
+    session_id = session.get('session_id', None)
+    superset_user = session.get('superset_user', None)
     
     config = {
         "EXEC_PYTHON_IN_SUBPROCESS": args['exec_python_in_subprocess'],
@@ -230,7 +328,14 @@ def get_app_config():
         "DISABLE_DATABASE": args['disable_database'],
         "DISABLE_FILE_UPLOAD": args['disable_file_upload'],
         "PROJECT_FRONT_PAGE": args['project_front_page'],
-        "SESSION_ID": session_id
+        "SESSION_ID": session_id,
+        "SUPERSET_ENABLED": app.config.get('SUPERSET_ENABLED', False),
+        "AUTH_USER": {
+            "id": superset_user.get("id"),
+            "username": superset_user.get("username", ""),
+            "first_name": superset_user.get("first_name", ""),
+            "last_name": superset_user.get("last_name", ""),
+        } if superset_user else None,
     }
     return flask.jsonify(config)
 
@@ -265,6 +370,8 @@ def parse_args() -> argparse.Namespace:
         help="Project the front page as the main page instead of the app.")
     parser.add_argument("--dev", action='store_true', default=False,
         help="Launch the app in development mode (prevents the app from opening the browser automatically)")
+    parser.add_argument("--superset-url", type=str, default=None,
+        help="Apache Superset URL for authentication and dataset integration (e.g. http://localhost:8088)")
     return parser.parse_args()
 
 
@@ -285,6 +392,26 @@ def run_app():
     
     # Update database manager state
     db_manager._disabled = args.disable_database
+
+    # Late Superset registration when passed via CLI (env var is handled at module level)
+    if args.superset_url and not app.config.get('SUPERSET_ENABLED'):
+        app.config['SUPERSET_URL'] = args.superset_url
+        app.config['SUPERSET_ENABLED'] = True
+        from data_formulator.superset.auth_bridge import SupersetAuthBridge
+        from data_formulator.superset.superset_client import SupersetClient
+        from data_formulator.superset.catalog import SupersetCatalog
+        from data_formulator.superset.catalog_routes import catalog_bp
+        from data_formulator.superset.data_routes import superset_data_bp
+
+        bridge = SupersetAuthBridge(args.superset_url)
+        app.extensions["superset_bridge"] = bridge
+        superset_client = SupersetClient(args.superset_url)
+        app.extensions["superset_client"] = superset_client
+        catalog_ttl = int(os.environ.get('CATALOG_CACHE_TTL', '300'))
+        catalog = SupersetCatalog(superset_client, cache_ttl=catalog_ttl)
+        app.extensions["superset_catalog"] = catalog
+        app.register_blueprint(catalog_bp)
+        app.register_blueprint(superset_data_bp)
 
     if not args.dev:
         url = "http://localhost:{0}".format(args.port)

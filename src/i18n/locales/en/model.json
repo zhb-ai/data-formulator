@@ -44,6 +44,7 @@
     "useModel": "Use {{modelName}}",
     "cancel": "cancel",
     "recommendedModelTip": "Models with strong code generation capabilities (e.g., gpt-5.1, claude-sonnet-4-5) provide best experience.",
-    "openaiProviderTip": "Use openai provider for OpenAI-compatible APIs."
+    "openaiProviderTip": "Use openai provider for OpenAI-compatible APIs.",
+    "loadingModels": "Loading models..."
   }
 }

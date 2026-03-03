@@ -48,10 +48,15 @@ import {
 import MuiAppBar from '@mui/material/AppBar';
 import { alpha, createTheme, styled, ThemeProvider } from '@mui/material/styles';
 
-import PowerSettingsNewIcon from '@mui/icons-material/PowerSettingsNew';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import ClearIcon from '@mui/icons-material/Clear';
+import LoginIcon from '@mui/icons-material/Login';
+import LogoutIcon from '@mui/icons-material/Logout';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
 
 import { DataFormulatorFC } from '../views/DataFormulator';
+import { LoginView } from '../views/LoginView';
 
 import GridViewIcon from '@mui/icons-material/GridView';
 import ViewSidebarIcon from '@mui/icons-material/ViewSidebar';
@@ -362,7 +367,7 @@ const ResetDialog: React.FC = () => {
                 variant="text" 
                 sx={{textTransform: 'none'}}
                 onClick={() => setOpen(true)} 
-                endIcon={<PowerSettingsNewIcon />}
+                endIcon={<RestartAltIcon />}
             >
                 {t('app.reset')}
             </Button>
@@ -384,13 +389,61 @@ const ResetDialog: React.FC = () => {
                                 window.location.reload();
                             }, 250); // 250ms should be enough for state update
                         }} 
-                        endIcon={<PowerSettingsNewIcon />}
+                        endIcon={<RestartAltIcon />}
                     >
                         {t('session.resetSessionAction')}
                     </Button>
                     <Button onClick={() => setOpen(false)}>{t('app.cancel')}</Button>
                 </DialogActions>
             </Dialog>
+        </>
+    );
+};
+
+const UserMenu: React.FC<{ user: { username: string; first_name?: string; last_name?: string } }> = ({ user }) => {
+    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const { t } = useTranslation();
+    const displayName = `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim() || user.username;
+
+    return (
+        <>
+            <Divider orientation="vertical" variant="middle" flexItem />
+            <Button
+                size="small"
+                sx={{ textTransform: 'none', fontSize: 12, color: 'text.secondary', minWidth: 'auto' }}
+                onClick={(e) => setAnchorEl(e.currentTarget)}
+                endIcon={<KeyboardArrowDownIcon sx={{ fontSize: 14 }} />}
+            >
+                <Avatar {...stringAvatar(displayName)}
+                    sx={{ width: 22, height: 22, fontSize: '0.7rem', mr: 0.5, bgcolor: 'primary.main' }} />
+                {user.username}
+            </Button>
+            <Menu
+                anchorEl={anchorEl}
+                open={Boolean(anchorEl)}
+                onClose={() => setAnchorEl(null)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                slotProps={{ paper: { sx: { minWidth: 160, mt: 0.5 } } }}
+            >
+                <MenuItem disabled sx={{ opacity: '1 !important', py: 0.5 }}>
+                    <ListItemText
+                        primary={displayName}
+                        secondary={t('auth.connectedAs', { name: user.username })}
+                        primaryTypographyProps={{ fontSize: 13, fontWeight: 500 }}
+                        secondaryTypographyProps={{ fontSize: 11 }}
+                    />
+                </MenuItem>
+                <Divider />
+                <MenuItem onClick={async () => {
+                    setAnchorEl(null);
+                    await fetch(getUrls().AUTH_LOGOUT, { method: 'POST', credentials: 'include' });
+                    window.location.href = '/';
+                }}>
+                    <ListItemIcon><LogoutIcon fontSize="small" /></ListItemIcon>
+                    <ListItemText primaryTypographyProps={{ fontSize: 13 }}>{t('auth.signOut')}</ListItemText>
+                </MenuItem>
+            </Menu>
         </>
     );
 };
@@ -575,15 +628,23 @@ export const AppFC: FC<AppFCProps> = function AppFC(appProps) {
     const serverConfig = useSelector((state: DataFormulatorState) => state.serverConfig);
     const { t } = useTranslation();
 
+    const [authReady, setAuthReady] = useState(false);
+    const [showLogin, setShowLogin] = useState(false);
+
     useEffect(() => {
-        fetch(getUrls().APP_CONFIG)
+        fetch(getUrls().APP_CONFIG, { credentials: 'include' })
             .then(response => response.json())
             .then(data => {
                 dispatch(dfActions.setServerConfig(data));
-            });
+                if (data.SUPERSET_ENABLED && !data.AUTH_USER && !data.SESSION_ID) {
+                    setShowLogin(true);
+                }
+                setAuthReady(true);
+            })
+            .catch(() => setAuthReady(true));
     }, []);
 
-    // if the user has logged in
+    // if the user has logged in (Azure Static Web Apps style)
     const [userInfo, setUserInfo] = useState<{ name: string, userId: string } | undefined>(undefined);
 
     useEffect(() => {
@@ -600,7 +661,6 @@ export const AppFC: FC<AppFCProps> = function AppFC(appProps) {
                 }
             }).catch(err => {
                 //user is not logged in, do not show logout button
-                //console.error(err)
             });
     }, []);
 
@@ -788,6 +848,22 @@ export const AppFC: FC<AppFCProps> = function AppFC(appProps) {
                         </Typography>
                         <Divider orientation="vertical" variant="middle" flexItem />
                         <ResetDialog />
+                        {serverConfig.SUPERSET_ENABLED && !serverConfig.AUTH_USER && (
+                            <>
+                                <Divider orientation="vertical" variant="middle" flexItem />
+                                <Button
+                                    size="small"
+                                    sx={{ textTransform: 'none', fontSize: 12, minWidth: 'auto' }}
+                                    startIcon={<LoginIcon sx={{ fontSize: 16 }} />}
+                                    onClick={() => setShowLogin(true)}
+                                >
+                                    {t('auth.signIn')}
+                                </Button>
+                            </>
+                        )}
+                        {serverConfig.AUTH_USER && (
+                            <UserMenu user={serverConfig.AUTH_USER} />
+                        )}
                     </Box>
                 )}
                 {isAboutPage && (
@@ -870,16 +946,33 @@ export const AppFC: FC<AppFCProps> = function AppFC(appProps) {
         </AppBar>
     ];
 
+    const mainElement = showLogin ? (
+        <LoginView
+            supersetEnabled={serverConfig.SUPERSET_ENABLED}
+            onLoginSuccess={() => setShowLogin(false)}
+            onGuestContinue={() => setShowLogin(false)}
+        />
+    ) : (
+        <DataFormulatorFC />
+    );
+
     let router = createBrowserRouter([
         {
             path: "/about",
             element: <About />,
         }, {
+            path: "/login",
+            element: <LoginView
+                supersetEnabled={serverConfig.SUPERSET_ENABLED}
+                onLoginSuccess={() => setShowLogin(false)}
+                onGuestContinue={() => setShowLogin(false)}
+            />,
+        }, {
             path: "/",
-            element: serverConfig.PROJECT_FRONT_PAGE ? <About /> : <DataFormulatorFC />,
+            element: serverConfig.PROJECT_FRONT_PAGE ? <About /> : mainElement,
         }, {
             path: "*",
-            element: <DataFormulatorFC />,
+            element: mainElement,
             errorElement: <Box sx={{ width: "100%", height: "100%", display: "flex" }}>
                 <Typography color="gray" sx={{ margin: "150px auto" }}>
                     <Trans i18nKey="appBar.errorOccurred" components={{ refreshAction: <Link href="/" /> }} />

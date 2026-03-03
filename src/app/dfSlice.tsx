@@ -35,12 +35,21 @@ export interface SSEMessage {
     timestamp: number;
 }
 
+export interface AuthUser {
+    id: number;
+    username: string;
+    first_name: string;
+    last_name: string;
+}
+
 // Add interface for app configuration
 export interface ServerConfig {
     DISABLE_DISPLAY_KEYS: boolean;
     DISABLE_DATABASE: boolean;
     DISABLE_FILE_UPLOAD: boolean;
     PROJECT_FRONT_PAGE: boolean;
+    SUPERSET_ENABLED: boolean;
+    AUTH_USER: AuthUser | null;
 }
 
 export interface ModelConfig {
@@ -84,6 +93,7 @@ export interface DataFormulatorState {
      * are always refreshed from the latest server configuration.
      */
     globalModels: ModelConfig[];
+    globalModelsLoading: boolean;
     /** User-added models, persisted across browser sessions. */
     models: ModelConfig[];
     selectedModelId: string | undefined;
@@ -141,6 +151,7 @@ const initialState: DataFormulatorState = {
 
     sessionId: undefined,
     globalModels: [],
+    globalModelsLoading: false,
     models: [],
     selectedModelId: undefined,
     testedModels: [],
@@ -166,6 +177,8 @@ const initialState: DataFormulatorState = {
         DISABLE_DATABASE: true, // disable database by default
         DISABLE_FILE_UPLOAD: false,
         PROJECT_FRONT_PAGE: false,
+        SUPERSET_ENABLED: false,
+        AUTH_USER: null,
     },
 
     config: {
@@ -356,22 +369,26 @@ export const fetchAvailableModels = createAsyncThunk(
     }
 );
 
+const SESSION_LS_KEY = 'df_session_id';
+
 export const getSessionId = createAsyncThunk(
     "dataFormulatorSlice/getSessionId",
-    async (_, { getState }) => {
-        let state = getState() as DataFormulatorState;
-        let sessionId = state.sessionId;
+    async () => {
+        const saved = localStorage.getItem(SESSION_LS_KEY) || undefined;
+        const body: Record<string, string> = {};
+        if (saved) body.recover_session_id = saved;
 
         const response = await fetch(`${getUrls().GET_SESSION_ID}`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                session_id: sessionId,
-            }),
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
         });
-        return response.json();
+        const data = await response.json();
+        if (data.session_id) {
+            localStorage.setItem(SESSION_LS_KEY, data.session_id);
+        }
+        return data;
     }
 );
 
@@ -1032,7 +1049,15 @@ export const dataFormulatorSlice = createSlice({
                 }
             }
         })
+        .addCase(fetchAvailableModels.pending, (state) => {
+            state.globalModelsLoading = true;
+        })
+        .addCase(fetchAvailableModels.rejected, (state) => {
+            state.globalModelsLoading = false;
+        })
         .addCase(fetchAvailableModels.fulfilled, (state, action) => {
+            state.globalModelsLoading = false;
+
             // Server now returns all globally configured models, each with a
             // "status" field: "connected" or "disconnected".
             const serverModels: (ModelConfig & { status: string; error: string | null })[] = action.payload;

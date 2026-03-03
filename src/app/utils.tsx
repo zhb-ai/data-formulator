@@ -16,6 +16,13 @@ export function getUrls() {
         APP_CONFIG: `/api/app-config`,
         AUTH_INFO_PREFIX: `/api/.auth/`,
 
+        AUTH_LOGIN: `/api/auth/login`,
+        AUTH_ME: `/api/auth/me`,
+        AUTH_LOGOUT: `/api/auth/logout`,
+
+        SUPERSET_CATALOG_DATASETS: `/api/superset/catalog/datasets`,
+        SUPERSET_LOAD_DATASET: `/api/superset/data/load-dataset`,
+
         EXAMPLE_DATASETS: `/api/example-datasets`,
 
         // these functions involves ai agents

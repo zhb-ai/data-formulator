@@ -1,479 +1,338 @@
-# DF（Data Formulator）Python 环境启动指南（非 Docker）
+# Data Formulator — Python 环境启动指南
 
-> 适用于：`e:\GPT\superset` 当前项目结构  
-> 目标：不使用 Docker，直接在 Python 虚拟环境中启动 DF，并可按需接入任意 AI 模型服务。  
-> 本指南默认本地开发；生产请参考非 Docker 部署文档并使用独立内部 token。
-
----
-
-## 1. 适用目录与启动目标
-
-你当前涉及两个仓库：
-
-- `\data-formulator`：Data Formulator 修改后的源码
-- `\superset-df-integration`：Gateway 集成层
-
-推荐启动顺序（非 Docker）：
-
-1. 创建 `api-keys.env`，填入模型配置（一次性操作）
-2. 启动 Data Formulator
-3. （可选）启动 Gateway 后端/前端做联调
+> 本项目已内置 Superset 集成功能，无需额外启动 gateway 服务。  
+> 一个命令即可启动所有服务（DF + Superset 数据桥接 + 认证代理）。
 
 ---
 
-## 2. 前置要求
-
-- Python 3.11+
-- PowerShell（Windows）
-- Node.js 18+（仅在你需要启动 `gateway-frontend` 时）
-- （可选）Superset：`http://localhost:8088`
-
-建议先声明工作目录变量，后续命令统一使用：
+## 快速开始（3 步启动）
 
 ```powershell
-$WORKSPACE = "e:\GPT\superset"
-```
-
----
-
-## 3. 启动 DF
-
-```powershell
-cd $WORKSPACE\data-formulator
-
-# 1) 创建并激活 Conda 环境（首次）
+# 1. 创建并激活环境（首次）
 conda create -n data-formulator python=3.11
 conda activate data-formulator
 
-# 2) 安装本地源码（开发模式，首次或代码有改动时执行）
-pip install -e .
+# 2. 安装（首次或代码有改动时）
+git clone https://github.com/zhb-ai/data-formulator.git
 
-# 3) 启动 DF
+# 3. 构建前端
+cd data-formulator
+npm insttall
+npm run build
+
+
+# 4. 启动
 python -m data_formulator --port 5000
 ```
 
-访问：`http://127.0.0.1:5000`
+浏览器访问 **http://127.0.0.1:5000**，点击模型选择按钮即可开始使用。
 
-> 如果 5000 被占用：`python -m data_formulator --port 5001`
+> 端口被占用时可改用 `--port 5001` 等。
 
 ---
 
-## 4. 配置模型（核心）
-
-DF 启动时会自动加载 `data-formulator/api-keys.env`。**所有模型的 API Key 仅存在服务端，不会发送到浏览器前端。**
-
-前端打开后，模型选择面板会自动显示所有已配置的模型，并以绿色（可连接）/ 红色（无法连接）标识连通状态。
-
-### 4.1 配置文件位置
+## 目录结构概览
 
 ```
 data-formulator/
-└── api-keys.env          ← 放这里，DF 自动加载，优先级最高
+├── .env                    ← 主配置文件（自动加载，已在 .gitignore 中）
+├── .env.template           ← 配置模板（参考用）
+├── api-keys.env            ← 模型密钥配置（自动加载，已在 .gitignore 中）
+├── api-keys-example.env    ← 模型密钥配置模板（参考用）
+├── .local-db/              ← DuckDB 数据库文件存储目录
+├── py-src/                 ← Python 后端源码
+│   └── data_formulator/
+│       ├── app.py          ← Flask 主应用
+│       ├── superset/       ← Superset 集成模块（认证、目录、数据加载）
+│       └── ...
+├── src/                    ← React 前端源码
+└── dist/                   ← 前端构建产物（Flask 直接托管）
 ```
 
-> 这个文件已在 `.gitignore` 中，不会被提交到 Git。
+---
 
-### 4.2 配置格式说明
+## 1. 配置文件说明
 
-每个模型服务商用一组独立的环境变量配置，**变量名前缀可以自由命名**（只要全大写即可），不需要改任何代码。
+### 1.1 `.env` — 主配置文件
+
+项目根目录的 `.env` 是主要配置文件，启动时自动加载。首次启动前可复制模板：
+
+```powershell
+copy .env.template .env
+```
+
+然后按需修改：
+
+```ini
+# 本地数据库存储目录，留空则使用系统临时目录
+LOCAL_DB_DIR=E:/GPT/superset/data-formulator/.local-db
+
+# Apache Superset 集成（留空或删除则禁用）
+SUPERSET_URL=http://192.168.1.10:8088
+
+# 设为 true 时，前端不显示 API 密钥输入框
+DISABLE_DISPLAY_KEYS=false
+
+# 设为 true 时，Python 代码在子进程中执行，避免主进程崩溃，但响应更慢
+EXEC_PYTHON_IN_SUBPROCESS=false
+
+# FLASK_SECRET_KEY — 无需手动填写！
+# 首次启动时系统自动生成并追加到本文件末尾。
+# 迁移系统时需保留此密钥，以保持匿名用户 session 与数据库的对应关系。
+```
+
+| 配置项 | 必填 | 说明 |
+|---|---|---|
+| `LOCAL_DB_DIR` | 否 | DuckDB 文件存放目录。留空用系统临时目录 |
+| `SUPERSET_URL` | 否 | Superset 服务地址。留空则禁用 Superset 集成 |
+| `FLASK_SECRET_KEY` | 否 | 自动生成，用于加密 session cookie |
+| `DISABLE_DISPLAY_KEYS` | 否 | 是否隐藏前端的 API Key 输入框 |
+| `EXEC_PYTHON_IN_SUBPROCESS` | 否 | 是否在子进程中执行 Python 代码 |
+
+### 1.2 `api-keys.env` — 模型密钥配置
+
+所有 AI 模型的 API Key 配置在此文件中，**密钥仅存在服务端，不会发送到浏览器前端**。
+
+```
+data-formulator/
+├── api-keys.env            ← 实际配置（.gitignore 已忽略）
+└── api-keys-example.env    ← 参考模板
+```
+
+### 1.3 配置文件加载优先级
+
+```
+① data-formulator/.env              ← 最高优先级
+② data-formulator/api-keys.env
+③ py-src/data_formulator/api-keys.env
+④ py-src/data_formulator/.env        ← 最低优先级
+```
+
+同名变量先加载的文件优先（`load_dotenv` 默认不覆盖已有变量）。
+
+---
+
+## 2. 数据库文件命名规则
+
+DuckDB 文件存放在 `LOCAL_DB_DIR` 指定的目录中（默认为系统临时目录）。
+
+### 2.1 文件命名格式
+
+| 用户类型 | 文件名格式 | 示例 |
+|---|---|---|
+| 匿名用户 | `df_{随机hex}.duckdb` | `df_a1b2c3d4e5f67890abcdef12345678.duckdb` |
+| Superset 用户 | `df_superset_user_{用户ID}.duckdb` | `df_superset_user_1.duckdb` |
+
+### 2.2 Session 持久化
+
+**Superset 用户**：session_id 由 Superset 用户 ID 确定性生成（`superset_user_{uid}`），因此：
+- 无论从哪个浏览器登录、服务器是否重启，同一用户始终映射到同一个 DuckDB 文件
+- 不存在 session 过期导致数据丢失的问题
+
+**匿名用户**：通过双重机制保障数据持久性：
+1. **Cookie 机制**：Session 有效期 **365 天**，`FLASK_SECRET_KEY` 首次启动时自动生成并写入 `.env`，服务器重启不会使已有 cookie 失效
+2. **localStorage 备份**：前端会将 session_id 额外存储在浏览器 localStorage 中。当 cookie 过期或丢失时，前端会将备份的 session_id 发送给后端，后端验证对应的 DuckDB 文件存在后自动恢复 session
+
+只要用户的浏览器环境未发生变化（未清除浏览器数据），匿名用户就能一直访问自己的数据。
+
+### 2.3 迁移注意事项
+
+迁移到新机器时，需同时迁移：
+
+1. `.env` 文件（包含 `FLASK_SECRET_KEY`）
+2. `.local-db/` 目录（包含所有 DuckDB 文件）
+
+若 `FLASK_SECRET_KEY` 丢失，匿名用户的 cookie 将失效，但 localStorage 备份机制会尝试自动恢复。如果浏览器数据也被清除，数据库文件仍在磁盘上，可通过手动重命名恢复。
+---
+
+## 3. Superset 集成
+
+本项目已内置 Superset 集成功能，启用后可在 DF 界面中：
+
+- 使用 Superset 账号登录
+- 浏览 Superset 数据集（含列名、描述、行数）
+- 一键加载数据集到本地 DuckDB（支持自定义表名/别名）
+- 匿名用户仍可正常使用，上传自己的数据集
+
+### 3.1 启用方式
+
+在 `.env` 中设置 `SUPERSET_URL`：
+
+```ini
+SUPERSET_URL=http://192.168.1.10:8088
+```
+
+留空或删除此行则禁用 Superset 集成，DF 以纯匿名模式运行。
+
+### 3.2 使用流程
+
+1. 启动 DF 后，页面会显示登录界面
+2. 输入 Superset 账号密码登录（或选择"以访客身份继续"）
+3. 点击顶栏"数据"按钮 → 选择"Database"标签页
+4. 左侧显示 Superset 数据集列表，右侧显示本地 DuckDB 表
+5. 可为数据集输入别名（默认带日期后缀），点击"加载"写入 DuckDB
+
+---
+
+## 4. 模型配置
+
+### 4.1 配置格式
+
+每个模型服务商用一组独立的环境变量，**前缀名可自由命名**（全大写）：
 
 | 变量名 | 必填 | 说明 |
 |---|---|---|
-| `{NAME}_ENABLED` | ✅ | `true` 表示启用此服务商 |
-| `{NAME}_ENDPOINT` | ✅ | 调用类型：OpenAI 兼容填 `openai`；内置厂商（anthropic/gemini 等）可省略 |
-| `{NAME}_API_KEY` | ✅ | 该服务商的 API 密钥 |
-| `{NAME}_API_BASE` | 视情况 | API 地址（官方 OpenAI 可省略，其他一般都要填） |
+| `{NAME}_ENABLED` | ✅ | `true` 表示启用 |
+| `{NAME}_ENDPOINT` | ✅ | 调用类型：OpenAI 兼容填 `openai`；内置厂商可省略 |
+| `{NAME}_API_KEY` | ✅ | API 密钥 |
+| `{NAME}_API_BASE` | 视情况 | API 地址（官方 OpenAI 可省略） |
 | `{NAME}_API_VERSION` | ❌ | 仅 Azure 需要 |
-| `{NAME}_MODELS` | ✅ | 模型名称，多个用英文逗号分隔 |
+| `{NAME}_MODELS` | ✅ | 模型名称，多个用逗号分隔 |
 
-### 4.3 当前配置（DeepSeek + Qwen）
+内置厂商（可省略 ENDPOINT）：`openai`、`azure`、`anthropic`、`gemini`、`ollama`
+
+### 4.2 常用配置示例
 
 ```ini
-# data-formulator/api-keys.env
-
-# DeepSeek（OpenAI 兼容格式）
+# === DeepSeek（OpenAI 兼容）===
 DEEPSEEK_ENABLED=true
 DEEPSEEK_ENDPOINT=openai
 DEEPSEEK_API_KEY=你的DeepSeek密钥
 DEEPSEEK_API_BASE=https://api.deepseek.com
 DEEPSEEK_MODELS=deepseek-chat
 
-# 阿里云百炼 / Qwen（OpenAI 兼容格式）
+# === 阿里云百炼 / Qwen（OpenAI 兼容）===
 QWEN_ENABLED=true
 QWEN_ENDPOINT=openai
 QWEN_API_KEY=你的阿里云API密钥
 QWEN_API_BASE=https://dashscope.aliyuncs.com/compatible-mode/v1
 QWEN_MODELS=qwen3-omni-flash
-```
 
-### 4.4 添加更多模型服务商（无需改代码）
-
-只要服务商支持 OpenAI 兼容接口（`/v1/chat/completions`），照下面格式追加即可，**前缀名随意取**：
-
-**示例：添加 Moonshot（月之暗面）**
-
-```ini
-MOONSHOT_ENABLED=true
-MOONSHOT_ENDPOINT=openai
-MOONSHOT_API_KEY=sk-你的moonshot密钥
-MOONSHOT_API_BASE=https://api.moonshot.cn/v1
-MOONSHOT_MODELS=moonshot-v1-8k,moonshot-v1-32k
-```
-
-**示例：添加 Groq（超高速推理）**
-
-```ini
-GROQ_ENABLED=true
-GROQ_ENDPOINT=openai
-GROQ_API_KEY=gsk_你的groq密钥
-GROQ_API_BASE=https://api.groq.com/openai/v1
-GROQ_MODELS=llama-3.3-70b-versatile,mixtral-8x7b-32768
-```
-
-**示例：添加 OpenAI 官方**
-
-```ini
+# === OpenAI 官方（内置厂商）===
 OPENAI_ENABLED=true
-OPENAI_API_KEY=sk-你的openai密钥
+OPENAI_API_KEY=sk-你的密钥
 OPENAI_MODELS=gpt-4o,gpt-4o-mini
-```
 
-> `openai` 是内置厂商，省略 `OPENAI_ENDPOINT` 和 `OPENAI_API_BASE`（使用官方地址）。
+# === Anthropic Claude（内置厂商）===
+ANTHROPIC_ENABLED=true
+ANTHROPIC_API_KEY=sk-ant-你的密钥
+ANTHROPIC_MODELS=claude-3-5-sonnet-20241022
 
-**示例：内网自建 / vLLM / Ollama 等**
+# === Google Gemini（内置厂商）===
+GEMINI_ENABLED=true
+GEMINI_API_KEY=AIza你的密钥
+GEMINI_MODELS=gemini-2.0-flash
 
-```ini
-# vLLM 自建
-VLLM_ENABLED=true
-VLLM_ENDPOINT=openai
-VLLM_API_KEY=any-key
-VLLM_API_BASE=http://你的vllm地址:8000/v1
-VLLM_MODELS=Qwen2.5-72B-Instruct
-
-# Ollama 本地（内置厂商）
+# === Ollama 本地（内置厂商）===
 OLLAMA_ENABLED=true
 OLLAMA_API_BASE=http://localhost:11434
 OLLAMA_MODELS=llama3.2,qwen2.5
+
+# === 自定义 OpenAI 兼容服务（vLLM / LiteLLM 等）===
+VLLM_ENABLED=true
+VLLM_ENDPOINT=openai
+VLLM_API_KEY=any-key
+VLLM_API_BASE=http://你的地址:8000/v1
+VLLM_MODELS=Qwen2.5-72B-Instruct
 ```
 
-**示例：Anthropic Claude（内置厂商）**
+### 4.3 同一服务商多组配置
 
-```ini
-ANTHROPIC_ENABLED=true
-ANTHROPIC_API_KEY=sk-ant-你的密钥
-ANTHROPIC_MODELS=claude-3-5-sonnet-20241022,claude-3-haiku-20240307
-```
-
-**示例：Google Gemini（内置厂商）**
-
-```ini
-GEMINI_ENABLED=true
-GEMINI_API_KEY=AIza你的密钥
-GEMINI_MODELS=gemini-2.0-flash,gemini-1.5-pro
-```
-
-**示例：Azure OpenAI（内置厂商）**
-
-```ini
-AZURE_ENABLED=true
-AZURE_API_KEY=你的azure密钥
-AZURE_API_BASE=https://你的资源名.openai.azure.com
-AZURE_API_VERSION=2025-04-01-preview
-AZURE_MODELS=gpt-4o,gpt-4o-mini
-```
-
-### 4.5 同一服务商配置多组接入点
-
-如果你需要同一厂商的两个不同账号/地区，直接用不同前缀即可：
+不同前缀即可：
 
 ```ini
 DEEPSEEK_PROD_ENABLED=true
 DEEPSEEK_PROD_ENDPOINT=openai
-DEEPSEEK_PROD_API_KEY=sk-生产账号密钥
+DEEPSEEK_PROD_API_KEY=sk-生产账号
 DEEPSEEK_PROD_API_BASE=https://api.deepseek.com
 DEEPSEEK_PROD_MODELS=deepseek-chat
 
 DEEPSEEK_TEST_ENABLED=true
 DEEPSEEK_TEST_ENDPOINT=openai
-DEEPSEEK_TEST_API_KEY=sk-测试账号密钥
+DEEPSEEK_TEST_API_KEY=sk-测试账号
 DEEPSEEK_TEST_API_BASE=https://api.deepseek.com
 DEEPSEEK_TEST_MODELS=deepseek-reasoner
 ```
 
-### 4.6 配置生效
+### 4.4 配置生效
 
-修改 `api-keys.env` 后，**重启 DF** 即可生效：
+修改 `api-keys.env` 后，重启 DF 即可：
 
 ```powershell
-# Ctrl+C 停止当前 DF，然后重启
+# Ctrl+C 停止，然后重启
 python -m data_formulator --port 5000
 ```
 
-重启后，浏览器打开模型选择面板，所有配置的模型都会显示（含连通状态）。
+启动后前端模型面板会自动显示所有已配置模型的连通状态（加载时显示旋转图标）。
 
 ---
 
-## 5. （可选）通过 LiteLLM Proxy 中转
+## 5. 会话与数据库管理
 
-如果你希望通过统一网关中转所有模型请求（例如做日志审计、限速、多租户），也可以继续使用 LiteLLM Proxy，然后在 `api-keys.env` 里只配置一个 `OPENAI_*` 指向本地代理：
+### 5.1 会话导入/导出
 
-```ini
-# 走 LiteLLM Proxy
-OPENAI_ENABLED=true
-OPENAI_API_KEY=sk-litellm-master-key-2024
-OPENAI_API_BASE=http://127.0.0.1:4000/v1
-OPENAI_MODELS=deepseek-chat,qwen3-omni-flash
-```
+- **导出会话**：将当前前端状态（表、图表、概念、报告等）序列化为 `.json` 文件
+- **导入会话**：读取 `.json` 恢复前端状态
 
-启动 LiteLLM Proxy：
+### 5.2 数据库导入/导出
 
-```powershell
-cd $WORKSPACE\superset-df-integration
-pip install "litellm[proxy]"
-litellm --config "config\litellm_config.runtime.yaml" --host 127.0.0.1 --port 4000
-```
+- **下载数据库**：将当前 session 的 DuckDB 文件导出到本地
+- **导入数据库**：上传 `.db` 文件替换当前 session 的数据库
 
-健康检查：
+### 5.3 完整迁移流程
 
-```powershell
-Invoke-WebRequest http://127.0.0.1:4000/health -UseBasicParsing
-```
+如果会话中包含数据库表，建议按以下顺序迁移：
+
+1. 导出会话 → 得到 `.json`
+2. 下载数据库 → 得到 `.db`
+3. 在目标环境先导入数据库
+4. 再导入会话
 
 ---
 
-## 6. 与 `superset-df-integration` 联调（可选）
+## 6. 常见问题
 
-检查 `e:\GPT\superset\superset-df-integration\.env`：
+### 模型面板显示"无法连接"（红色）
 
-```ini
-SUPERSET_URL=http://localhost:8088
-DF_URL=http://127.0.0.1:5000
-LLM_API_KEY=你的密钥
-LLM_BASE_URL=http://127.0.0.1:4000/v1
-LLM_MODEL=deepseek-chat
-```
-
-启动 Gateway：
-
-```powershell
-# 终端 C：Gateway 后端
-cd $WORKSPACE\superset-df-integration\gateway-service
-conda activate gateway-service
-python run.py
-
-# 终端 D：Gateway 前端（开发模式）
-cd $WORKSPACE\superset-df-integration\gateway-frontend
-npm run dev
-```
-
-访问：
-
-- Gateway 前端：`http://localhost:3001`
-- DF：`http://127.0.0.1:5000`
-- Superset：`http://localhost:8088`
-
----
-
-## 7. 常见问题
-
-### 7.1 前端模型面板打开后显示"无法连接"（红色）
-
-这是正常现象——模型已配置，但连接测试失败。按以下步骤排查：
-
-**① 直接调用后端接口查看详细状态**
+直接调用后端接口查看详细状态：
 
 ```powershell
 Invoke-WebRequest -Uri "http://127.0.0.1:5000/api/agent/check-available-models" `
   -Method POST -Body '{"token":1}' -ContentType "application/json" `
   -UseBasicParsing | Select-Object -ExpandProperty Content
 ```
-
-返回示例：
-```json
-[
-  {
-    "id": "global-deepseek-deepseek-chat",
-    "endpoint": "openai",
-    "model": "deepseek-chat",
-    "status": "disconnected",
-    "error": "Connection timeout"
-  }
-]
-```
-
-`status: "disconnected"` + `error` 字段会告诉你具体原因。
-
-**② 常见错误原因**
 
 | 现象 | 原因 |
 |---|---|
-| `Connection timeout` / `Connection refused` | 网络不通，或 API 地址填错 |
+| `Connection timeout` / `Connection refused` | 网络不通或 API 地址错误 |
 | `401 Unauthorized` | API Key 错误或已过期 |
-| 返回 `[]`（空数组） | `api-keys.env` 没被读到，检查文件路径和 `_ENABLED=true` |
-| 重启后仍无变化 | 文件可能有 BOM 或编码问题，用 UTF-8（无 BOM）保存 |
+| 返回 `[]` 空数组 | `api-keys.env` 未被读取，检查路径和 `_ENABLED=true` |
+| 重启后仍无变化 | 文件编码问题，请用 UTF-8（无 BOM）保存 |
 
-### 7.2 配置了模型但前端列表为空
+### 配置了模型但前端不显示
 
-```powershell
-# 确认 DF 读到了配置
-Invoke-WebRequest -Uri "http://127.0.0.1:5000/api/agent/check-available-models" `
-  -Method POST -Body '{"token":1}' -ContentType "application/json" `
-  -UseBasicParsing | Select-Object -ExpandProperty Content
-```
+- 确认 `api-keys.env` 位于 `data-formulator/` 根目录
+- 确认对应 `{NAME}_ENABLED=true`
+- 重启 DF
+- 强制刷新浏览器（`Ctrl+Shift+R`）
 
-- 返回 `[]`：`api-keys.env` 未被加载。确认文件在 `data-formulator/api-keys.env`，且对应 `{NAME}_ENABLED=true`，然后**重启 DF**。
-- 返回有内容但前端不显示：强制刷新浏览器（`Ctrl+Shift+R`）。
-
-### 7.3 Windows 下 PowerShell 设环境变量后无效
-
-推荐直接用 `api-keys.env` 文件，不要用临时环境变量。若一定要用临时变量：
-
-```powershell
-# PowerShell
-$env:DEEPSEEK_ENABLED = "true"
-$env:DEEPSEEK_API_KEY  = "sk-..."
-```
-
-```cmd
-:: CMD（Conda 激活后默认）
-set DEEPSEEK_ENABLED=true
-set DEEPSEEK_API_KEY=sk-...
-```
-
-> `$env:` 语法只在 PowerShell 中有效；Conda 激活后是 cmd.exe，应使用 `set`。
-
-### 7.4 端口冲突
+### 端口冲突
 
 ```powershell
 netstat -ano | findstr :5000
-netstat -ano | findstr :4000
 ```
 
 改端口或结束冲突进程后重试。
 
-### 7.5 Windows 下 LiteLLM 编码报错
+### Superset 登录失败
 
-若出现 `UnicodeDecodeError (gbk)`，使用：
-
-```
-config/litellm_config.runtime.yaml
-```
-
-不要使用含非 ASCII 内容的配置文件。
+- 确认 `.env` 中 `SUPERSET_URL` 地址正确且可访问
+- 确认 Superset 服务已启动
+- 确认使用的是 Superset 账号密码（非 DF 本地账号）
 
 ---
 
-## 8. 停止服务与退出环境
+## 7. 停止服务
 
-- 停止 DF：在对应终端按 `Ctrl+C`
+- 停止 DF：在终端按 `Ctrl+C`
 - 退出虚拟环境：`conda deactivate`
-
----
-
-## 9. 一键回顾（最短路径）
-
-1. `conda create -n data-formulator python=3.11 && conda activate data-formulator`
-2. `cd data-formulator && pip install -e .`
-3. 创建 `data-formulator/api-keys.env`，填入至少一个模型（见第 4 节）
-4. `python -m data_formulator --port 5000`
-5. 浏览器打开 `http://127.0.0.1:5000`，点击模型选择按钮，绿色的即可使用
-
----
-
-## 10. 会话与数据库导入导出说明（补充）
-
-下面补充几个在实际使用中最容易混淆的点：
-
-### 10.1 “导入/导出绘画”实际对应什么？
-
-在 Data Formulator 的主流程里，更准确是**导入/导出会话（session）**，而不是单独导入/导出某一张图文件。
-
-- **导出会话（export session）**：把当前前端状态（表、图表、概念、报告等）序列化为本地 `.json`。
-- **导入会话（import session）**：读取这个 `.json` 并恢复前端状态。
-
-> 说明：图表渲染使用 Vega，图层本身可能带有独立导出动作；但“会话菜单”里的导入导出是针对**整个会话状态**。
-
-### 10.2 “下载数据库”是什么？
-
-“下载数据库（download database）”是把当前会话绑定的本地 DuckDB 数据库文件导出到本机，用于备份或迁移。
-
-### 10.3 “导入数据库”是什么？
-
-“导入数据库（import database）”是上传一个 `.db` 文件到当前会话，让当前会话改用这份数据库。
-
-后端会先校验文件是否可被 DuckDB 正常打开，校验通过后替换当前会话对应的数据库映射。
-
-### 10.4 数据库存在哪里？在服务端吗？
-
-是的，数据库文件在**后端服务进程侧**（你本机启动时就是本机 Python 后端），不在浏览器本地存储。
-
-数据库目录规则：
-
-- 优先使用环境变量 `LOCAL_DB_DIR`（见 `.env` / `.env.template`）。
-- 若未配置，则使用系统临时目录（`tempfile.gettempdir()`）。
-
-常见文件命名：
-
-- 常规会话数据库：`df_<session_id>.duckdb`
-- 通过“导入数据库文件”写入时：`df_<session_id>.db`
-
-在 Windows 上，若未设置 `LOCAL_DB_DIR`，通常可在系统临时目录中找到（例如 `C:\Users\<用户名>\AppData\Local\Temp`）。
-
-### 10.5 推荐的迁移方式（避免“会话恢复但数据丢失”）
-
-如果会话里包含数据库表（尤其是虚拟/大表），建议按下面顺序迁移：
-
-1. 先“导出会话”得到 `.json`。
-2. 再“下载数据库”得到 `.db`。
-3. 在目标环境先“导入数据库”。
-4. 再“导入会话”。
-
-这样可以避免图表和会话状态恢复后找不到底层数据的问题。
-
----
-
-## 11. `LOCAL_DB_DIR` 固定目录配置（已按当前环境完成）
-
-### 11.1 当前是否已使用 `LOCAL_DB_DIR`？
-
-在本次配置前，你的项目内没有 `.env`，因此数据库目录没有固定到项目路径，默认会走系统临时目录。
-
-### 11.2 已完成的配置
-
-已在项目根目录创建：
-
-- `data-formulator/.env`
-
-内容如下：
-
-```ini
-LOCAL_DB_DIR=E:/GPT/superset/data-formulator/.local-db
-```
-
-并已创建目录：
-
-- `data-formulator/.local-db`
-
-### 11.3 如何生效
-
-重启 Data Formulator 后端即可生效：
-
-```powershell
-cd e:\GPT\superset\data-formulator
-python -m data_formulator --port 5000
-```
-
-### 11.4 如何验证是否生效
-
-导入一份数据后，检查 `data-formulator/.local-db` 目录下是否出现：
-
-- `df_<session_id>.duckdb`（常规场景）
-- 或 `df_<session_id>.db`（通过“导入数据库文件”写入时）
-
-### 11.5 关于“服务端重启后数据还在吗？”
-
-一般来说，**在固定目录且同一 session_id 下，数据会保留**，重启后可以继续打开对应数据库文件。  
-但有一个细节要注意：
-
-- 若你是通过“导入数据库文件”得到 `.db` 文件，重启后内存映射会清空，后续新连接默认优先走 `df_<session_id>.duckdb` 命名规则。
-- 最稳妥做法：按第 10.5 节执行“导出会话 + 下载数据库”，在目标会话中先导入数据库，再导入会话。

@@ -14,7 +14,7 @@ const persistConfig = {
     storage: localforage,
     // globalModels are always fetched fresh from the server on each app start,
     // so there is no need (and it would cause stale-data issues) to persist them.
-    blacklist: ['globalModels'],
+    blacklist: ['globalModels', 'globalModelsLoading'],
 }
 
 const persistedReducer = persistReducer(persistConfig, dataFormulatorReducer)

@@ -309,5 +309,47 @@
   },
   "dataView": {
     "breadcrumb": "breadcrumb"
+  },
+  "auth": {
+    "loginTitle": "Sign in to Data Formulator",
+    "loginSubtitle": "Connect your Superset account to access datasets, or continue as a guest.",
+    "username": "Username",
+    "password": "Password",
+    "signIn": "Sign In",
+    "signingIn": "Signing in...",
+    "continueAsGuest": "Continue as Guest",
+    "guestDescription": "Upload your own datasets without a Superset account.",
+    "loginFailed": "Login failed: {{message}}",
+    "or": "or",
+    "supersetConnection": "Superset Connection",
+    "connectedAs": "Signed in as {{name}}",
+    "signOut": "Sign Out",
+    "signOutConfirm": "Sign out and clear session data?",
+    "notConfigured": "Superset is not configured. Continuing in guest mode."
+  },
+  "supersetCatalog": {
+    "title": "Superset Datasets",
+    "searchPlaceholder": "Search datasets...",
+    "loadDataset": "Load",
+    "loadOverwrite": "Load & Overwrite",
+    "loadAsNewTip": "Load as new table with the alias",
+    "createNewDataset": "Create New Dataset",
+    "loading": "Loading datasets...",
+    "loadingDataset": "Loading dataset...",
+    "noDatasets": "No datasets found.",
+    "columns": "{{count}} columns",
+    "rows": "{{count}} rows",
+    "database": "Database",
+    "schema": "Schema",
+    "loadSuccess": "Dataset \"{{name}}\" loaded successfully ({{count}} rows).",
+    "loadFailed": "Failed to load dataset: {{message}}",
+    "refresh": "Refresh",
+    "aliasPlaceholder": "Table alias (optional)",
+    "suffixDialogTitle": "Enter Dataset Name Suffix",
+    "suffixDialogDesc": "Specify a suffix for dataset \"{{name}}\". It will be loaded to the right panel with the new name.",
+    "suffixPlaceholder": "Enter suffix",
+    "suffixPreview": "Final table name",
+    "cancel": "Cancel",
+    "confirmLoad": "Confirm & Load"
   }
 }

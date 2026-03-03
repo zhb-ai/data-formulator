@@ -42,6 +42,7 @@ import { DataLoadingChat } from './DataLoadingChat';
 import { DatasetSelectionView, DatasetMetadata } from './TableSelectionView';
 import { getUrls } from '../app/utils';
 import { DBManagerPane } from './DBTableManager';
+import { SupersetCatalog } from './SupersetCatalog';
 import { MultiTablePreview } from './MultiTablePreview';
 import { 
     FormControlLabel, 
@@ -72,6 +73,88 @@ function TabPanel(props: TabPanelProps) {
         </div>
     );
 }
+
+const SPLIT_MIN_PCT = 15;
+const SPLIT_MAX_PCT = 100 - SPLIT_MIN_PCT;
+const SPLIT_DEFAULT_PCT = 45;
+
+const SplitDatabasePane: React.FC<{ serverConfig: any }> = ({ serverConfig }) => {
+    const showSuperset = serverConfig.SUPERSET_ENABLED && serverConfig.AUTH_USER;
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [leftPct, setLeftPct] = useState(SPLIT_DEFAULT_PCT);
+    const dragging = useRef(false);
+
+    const onMouseDown = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        dragging.current = true;
+
+        const onMouseMove = (ev: MouseEvent) => {
+            if (!dragging.current || !containerRef.current) return;
+            const rect = containerRef.current.getBoundingClientRect();
+            let pct = ((ev.clientX - rect.left) / rect.width) * 100;
+            pct = Math.max(SPLIT_MIN_PCT, Math.min(SPLIT_MAX_PCT, pct));
+            setLeftPct(pct);
+        };
+
+        const onMouseUp = () => {
+            dragging.current = false;
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        };
+
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    }, []);
+
+    if (!showSuperset) {
+        return (
+            <Box sx={{ height: '100%', overflowY: 'auto' }}>
+                <DBManagerPane />
+            </Box>
+        );
+    }
+
+    return (
+        <Box ref={containerRef} sx={{ display: 'flex', flexDirection: 'row', height: '100%' }}>
+            <Box sx={{ width: `${leftPct}%`, minWidth: 0, overflowY: 'auto' }}>
+                <SupersetCatalog onDatasetLoaded={() => {
+                    window.dispatchEvent(new CustomEvent('superset-dataset-loaded'));
+                }} />
+            </Box>
+
+            <Box
+                onMouseDown={onMouseDown}
+                sx={{
+                    width: 6,
+                    flexShrink: 0,
+                    cursor: 'col-resize',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    bgcolor: 'action.hover',
+                    transition: 'background-color 0.15s',
+                    '&:hover': { bgcolor: 'primary.main', opacity: 0.3 },
+                    '&::after': {
+                        content: '""',
+                        display: 'block',
+                        width: 2,
+                        height: 32,
+                        borderRadius: 1,
+                        bgcolor: 'text.disabled',
+                    },
+                }}
+            />
+
+            <Box sx={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
+                <DBManagerPane />
+            </Box>
+        </Box>
+    );
+};
 
 // Data source menu card component
 interface DataSourceCardProps {
@@ -962,8 +1045,12 @@ export const UnifiedDataUploadDialog: React.FC<UnifiedDataUploadDialogProps> = (
             open={open}
             onClose={handleClose}
             maxWidth={false}
+            fullScreen={activeTab === 'database'}
             sx={{ 
-                '& .MuiDialog-paper': { 
+                '& .MuiDialog-paper': activeTab === 'database' ? {
+                    display: 'flex',
+                    flexDirection: 'column',
+                } : { 
                     width: 1100,
                     maxWidth: '95vw',
                     height: 600, 
@@ -971,7 +1058,7 @@ export const UnifiedDataUploadDialog: React.FC<UnifiedDataUploadDialogProps> = (
                     display: 'flex',
                     flexDirection: 'column',
                     transition: 'width 0.2s ease',
-                } 
+                },
             }}
         >
             <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, pb: 1 }}>
@@ -1470,7 +1557,7 @@ export const UnifiedDataUploadDialog: React.FC<UnifiedDataUploadDialogProps> = (
                             </Typography>
                         </Box>
                     ) : (
-                        <DBManagerPane />
+                        <SplitDatabasePane serverConfig={serverConfig} />
                     )}
                 </TabPanel>
 

@@ -84,6 +84,7 @@ export const ModelSelectionButton: React.FC<{}> = ({ }) => {
 
     const dispatch = useDispatch();
     const globalModels = useSelector((state: DataFormulatorState) => state.globalModels ?? []);
+    const globalModelsLoading = useSelector((state: DataFormulatorState) => state.globalModelsLoading);
     const models = useSelector((state: DataFormulatorState) => state.models);
     const selectedModelId = useSelector((state: DataFormulatorState) => state.selectedModelId);
     const testedModels = useSelector((state: DataFormulatorState) => state.testedModels);
@@ -564,10 +565,19 @@ export const ModelSelectionButton: React.FC<{}> = ({ }) => {
     let selectedModelName = allModels.find(m => m.id == selectedModelId)?.model || t('model.unselected');
 
     return <>
-        <Tooltip title={t('model.selectModel')}>
-            <Button sx={{fontSize: "inherit", textTransform: "none"}} variant="text" color={modelNotReady ? 'warning' : "primary"} onClick={()=>{setModelDialogOpen(true)}}>
-                {modelNotReady ? t('model.selectModels') : selectedModelName}
-            </Button>
+        <Tooltip title={globalModelsLoading ? t('model.loadingModels') : t('model.selectModel')}>
+            <span>
+                <Button
+                    sx={{ fontSize: "inherit", textTransform: "none" }}
+                    variant="text"
+                    color={globalModelsLoading ? 'inherit' : (modelNotReady ? 'warning' : "primary")}
+                    disabled={globalModelsLoading}
+                    onClick={() => { setModelDialogOpen(true) }}
+                    startIcon={globalModelsLoading ? <CircularProgress size={14} color="inherit" /> : undefined}
+                >
+                    {globalModelsLoading ? t('model.loadingModels') : (modelNotReady ? t('model.selectModels') : selectedModelName)}
+                </Button>
+            </span>
         </Tooltip>
         <Dialog 
             maxWidth="lg" 

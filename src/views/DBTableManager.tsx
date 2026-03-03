@@ -484,6 +484,10 @@ export const DBManagerPane: React.FC<{
 
     useEffect(() => {
         fetchTables();
+
+        const onSupersetLoaded = () => { fetchTables(); };
+        window.addEventListener('superset-dataset-loaded', onSupersetLoaded);
+        return () => window.removeEventListener('superset-dataset-loaded', onSupersetLoaded);
     }, []);
 
     function uploadFileButton(element: React.ReactNode, buttonSx?: SxProps) {
