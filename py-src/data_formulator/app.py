@@ -153,22 +153,27 @@ logger = logging.getLogger(__name__)
 
 def configure_logging():
     """Configure logging for the Flask application."""
-    # Configure root logger for general application logging
+    log_level_str = os.getenv("LOG_LEVEL", "INFO").strip().upper()
+    app_log_level = getattr(logging, log_level_str, logging.INFO)
+
     logging.basicConfig(
-        level=logging.ERROR,
+        level=logging.WARNING,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[logging.StreamHandler(sys.stdout)]
     )
-    
-    # Suppress verbose logging from third-party libraries
+
+    logging.getLogger('data_formulator').setLevel(app_log_level)
+
     logging.getLogger('httpx').setLevel(logging.WARNING)
     logging.getLogger('litellm').setLevel(logging.WARNING)
     logging.getLogger('openai').setLevel(logging.WARNING)
-    
+
     # Configure Flask app logger to use the same settings
     app.logger.handlers = []
     for handler in logging.getLogger().handlers:
         app.logger.addHandler(handler)
+
+    logging.getLogger('data_formulator').info(f"日志级别: {log_level_str}")
 
 
 OPEN_ENDPOINTS = frozenset([

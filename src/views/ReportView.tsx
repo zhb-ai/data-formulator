@@ -236,7 +236,7 @@ export const ReportView: FC = () => {
     const [isLoadingPreviews, setIsLoadingPreviews] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState<string>('');
-    const [style, setStyle] = useState<string>('social post');
+    const [style, setStyle] = useState<string>('live report');
     const [mode, setMode] = useState<'compose' | 'post'>(allGeneratedReports.length > 0 ? 'post' : 'compose');
 
     // Local state for current report

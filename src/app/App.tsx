@@ -216,7 +216,7 @@ export const ExportStateButton: React.FC<{}> = ({ }) => {
             }
         }
         
-        return JSON.stringify(stateToSerialize);
+        return JSON.stringify(stateToSerialize, null, 2);
     });
 
     const { t } = useTranslation();

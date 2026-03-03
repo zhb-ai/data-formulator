@@ -73,36 +73,60 @@ def check_available_models():
     """
     Return all globally configured models with their connectivity status.
 
-    Previously only reachable models were returned, causing the frontend to
-    silently omit unreachable entries.  Now every configured model is included
-    so the frontend can show a clear connected / disconnected indicator.
+    Connectivity checks run in parallel (ThreadPoolExecutor) so the total
+    wall-clock time equals the slowest single model, not the sum of all.
     Sensitive credentials (api_key) are never sent to the client.
     """
-    results = []
+    import time
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    for public_info in model_registry.list_public():
-        full_config = model_registry.get_config(public_info["id"])
+    all_public = model_registry.list_public()
+    logger.info("=" * 60)
+    logger.info(f"[check-available-models] 开始检查 {len(all_public)} 个全局模型")
+    for p in all_public:
+        logger.info(f"  -> {p['id']}  (endpoint={p['endpoint']}, model={p['model']}, api_base={p['api_base']})")
+    overall_start = time.time()
+
+    def _check_one(public_info: dict) -> dict:
+        model_id = public_info["id"]
+        t0 = time.time()
+        full_config = model_registry.get_config(model_id)
         status = "disconnected"
         error = None
 
         try:
             client = get_client(full_config)
-            response = client.get_completion(
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": "Respond 'I can hear you.' if you can hear me."},
-                ]
-            )
-            if "I can hear you." in response.choices[0].message.content:
-                status = "connected"
+            logger.info(f"  [{model_id}] 正在发送连通性测试请求 (max_tokens=3)...")
+            client.ping(timeout=10)
+            status = "connected"
+            logger.info(f"  [{model_id}] ✓ 连接成功 ({time.time() - t0:.1f}s)")
         except Exception as e:
-            # Log the full error server-side (may contain credentials) but only
-            # send a generic message to the frontend so that API keys embedded
-            # in provider error responses are never leaked to end users.
-            logger.warning(f"Model connectivity check failed for {public_info['id']}: {e}")
-            error = "无法连接，请联系管理员检查服务端配置"
+            elapsed = time.time() - t0
+            logger.warning(f"  [{model_id}] ✗ 连接失败 ({elapsed:.1f}s): {type(e).__name__}: {e}")
+            raw_err = str(e)
+            error = sanitize_model_error(raw_err) if raw_err else "无法连接，请联系管理员检查服务端配置"
 
-        results.append({**public_info, "status": status, "error": error})
+        return {**public_info, "status": status, "error": error}
+
+    results = []
+    with ThreadPoolExecutor(max_workers=min(len(all_public), 8)) as executor:
+        futures = {executor.submit(_check_one, p): p["id"] for p in all_public}
+        for future in as_completed(futures):
+            try:
+                results.append(future.result())
+            except Exception as e:
+                model_id = futures[future]
+                logger.error(f"  [{model_id}] 线程异常: {e}")
+                pub = next(p for p in all_public if p["id"] == model_id)
+                results.append({**pub, "status": "disconnected", "error": "检查线程异常"})
+
+    id_order = [p["id"] for p in all_public]
+    results.sort(key=lambda r: id_order.index(r["id"]))
+
+    total_elapsed = time.time() - overall_start
+    connected = sum(1 for r in results if r["status"] == "connected")
+    logger.info(f"[check-available-models] 检查完成: {connected}/{len(results)} 个连接成功, 总耗时 {total_elapsed:.1f}s")
+    logger.info("=" * 60)
 
     return json.dumps(results)
 

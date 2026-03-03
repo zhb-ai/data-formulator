@@ -359,9 +359,10 @@ export const fetchAvailableModels = createAsyncThunk(
             }),
         };
 
-        // timeout the request after 20 seconds
+        // Backend checks run in parallel with max_tokens=3 + 10s timeout per
+        // model, so total wall-clock ≈ slowest single model (~10s worst case).
         const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 20000)
+        const timeoutId = setTimeout(() => controller.abort(), 30000)
 
         let response = await fetch(getUrls().CHECK_AVAILABLE_MODELS, {...message, signal: controller.signal })
 

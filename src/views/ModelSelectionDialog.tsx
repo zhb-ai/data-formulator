@@ -197,6 +197,35 @@ export const ModelSelectionButton: React.FC<{}> = ({ }) => {
         sx={{ '&:last-child td, &:last-child th': { border: 0 }, 
         padding: "6px 6px"}}
     >
+        <TableCell align="left">
+            <TextField
+                size="small"
+                fullWidth
+                value={newModel}
+                onChange={(event) => { setNewModel(event.target.value); }}
+                placeholder={t('model.modelPlaceholder')}
+                error={newEndpoint != "" && !newModel}
+                slotProps={{
+                    input: {
+                        style: { fontSize: "0.75rem" },
+                        'aria-label': t('model.enterModelName'),
+                    }
+                }}
+            />
+        </TableCell>
+        <TableCell align="left" sx={{ minWidth: '180px' }}>
+            <TextField fullWidth size="small" type={showKeys ? "text" : "password"} 
+                slotProps={{
+                    input: {
+                        style: { fontSize: "0.75rem" }
+                    }
+                }}
+                placeholder={t('model.optionalKeylessEndpoint')}
+                value={newApiKey}  
+                onChange={(event: any) => { setNewApiKey(event.target.value); }} 
+                autoComplete='new-password'
+            />
+        </TableCell>
         <TableCell align="left" sx={{ width: '120px' }}>
             <Autocomplete
                 freeSolo
@@ -244,35 +273,6 @@ export const ModelSelectionButton: React.FC<{}> = ({ }) => {
                             </Typography>
                             {props.children}
                         </Paper>
-                    }
-                }}
-            />
-        </TableCell>
-        <TableCell align="left" sx={{ minWidth: '180px' }}>
-            <TextField fullWidth size="small" type={showKeys ? "text" : "password"} 
-                slotProps={{
-                    input: {
-                        style: { fontSize: "0.75rem" }
-                    }
-                }}
-                placeholder={t('model.optionalKeylessEndpoint')}
-                value={newApiKey}  
-                onChange={(event: any) => { setNewApiKey(event.target.value); }} 
-                autoComplete='new-password'
-            />
-        </TableCell>
-        <TableCell align="left">
-            <TextField
-                size="small"
-                fullWidth
-                value={newModel}
-                onChange={(event) => { setNewModel(event.target.value); }}
-                placeholder={t('model.modelPlaceholder')}
-                error={newEndpoint != "" && !newModel}
-                slotProps={{
-                    input: {
-                        style: { fontSize: "0.75rem" },
-                        'aria-label': t('model.enterModelName'),
                     }
                 }}
             />
@@ -411,9 +411,9 @@ export const ModelSelectionButton: React.FC<{}> = ({ }) => {
                         tempSelectedModelId === model.id ? undefined : model.id
                     )}
                 >
-                    <TableCell align="left" sx={{ borderBottom: noBorderStyle, ...disabledStyle }}>
-                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: 'inherit' }}>
-                            {model.endpoint}
+                    <TableCell align="left" sx={{ borderBottom: borderStyle, ...disabledStyle }}>
+                        <Typography variant="body2" sx={{ fontSize: 'inherit', fontWeight: 500 }}>
+                            {model.model}
                         </Typography>
                     </TableCell>
                     <TableCell component="th" scope="row" sx={{ borderBottom: borderStyle, ...disabledStyle }}>
@@ -437,9 +437,9 @@ export const ModelSelectionButton: React.FC<{}> = ({ }) => {
                             </Typography>
                         )}
                     </TableCell>
-                    <TableCell align="left" sx={{ borderBottom: borderStyle, ...disabledStyle }}>
-                        <Typography variant="body2" sx={{ fontSize: 'inherit', fontWeight: 500 }}>
-                            {model.model}
+                    <TableCell align="left" sx={{ borderBottom: noBorderStyle, ...disabledStyle }}>
+                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: 'inherit' }}>
+                            {model.endpoint}
                         </Typography>
                     </TableCell>
                     <TableCell align="left" sx={{ borderBottom: borderStyle, ...disabledStyle }}>
@@ -511,9 +511,9 @@ export const ModelSelectionButton: React.FC<{}> = ({ }) => {
     const tableHead = (
         <TableHead>
             <TableRow>
-                <TableCell sx={{ fontWeight: 'bold', width: '120px' }}>{t('model.provider')}</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', width: '160px' }}>{t('model.apiKey')}</TableCell>
                 <TableCell sx={{ fontWeight: 'bold', width: '160px' }} align="left">{t('model.model')}</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', width: '160px' }}>{t('model.apiKey')}</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', width: '120px' }}>{t('model.provider')}</TableCell>
                 <TableCell sx={{ fontWeight: 'bold', width: '200px' }} align="left">{t('model.apiBase')}</TableCell>
                 <TableCell sx={{ fontWeight: 'bold', width: '120px' }} align="left">{t('model.apiVersion')}</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }} align="left">{t('model.status')}</TableCell>

@@ -60,11 +60,14 @@ const ColumnChip: FC<{ columns: string[] }> = ({ columns }) => {
     const chip = (
         <Chip
             size="small"
+            variant="outlined"
             label={`${t('supersetCatalog.columns', { count: columns.length })}: ${display}`}
             sx={{
                 fontSize: 10,
                 height: 'auto',
                 minHeight: 18,
+                color: 'text.secondary',
+                borderColor: 'divider',
                 '& .MuiChip-label': {
                     whiteSpace: 'normal',
                     lineHeight: 1.3,
@@ -292,14 +295,16 @@ export const SupersetCatalog: FC<SupersetCatalogProps> = ({ onDatasetLoaded }) =
                                 <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
                                     <Chip
                                         size="small"
+                                        variant="outlined"
                                         label={`${ds.database}.${ds.schema}`}
-                                        sx={{ fontSize: 10, height: 18 }}
+                                        sx={{ fontSize: 10, height: 18, color: 'text.secondary', borderColor: 'divider' }}
                                     />
                                     {ds.row_count != null && (
                                         <Chip
                                             size="small"
+                                            variant="outlined"
                                             label={t('supersetCatalog.rows', { count: ds.row_count })}
-                                            sx={{ fontSize: 10, height: 18 }}
+                                            sx={{ fontSize: 10, height: 18, color: 'text.secondary', borderColor: 'divider' }}
                                         />
                                     )}
                                 </Box>
