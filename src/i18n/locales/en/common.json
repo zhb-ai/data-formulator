@@ -325,7 +325,13 @@
     "connectedAs": "Signed in as {{name}}",
     "signOut": "Sign Out",
     "signOutConfirm": "Sign out and clear session data?",
-    "notConfigured": "Superset is not configured. Continuing in guest mode."
+    "notConfigured": "Superset is not configured. Continuing in guest mode.",
+    "ssoLogin": "SSO Login",
+    "ssoLoggingIn": "Logging in via SSO...",
+    "ssoDescription": "Login with your enterprise account via Single Sign-On",
+    "ssoPopupBlocked": "Popup blocked. Please allow popups for this site.",
+    "ssoFailed": "SSO login failed: {{message}}",
+    "ssoOrPassword": "or sign in with Superset account"
   },
   "supersetCatalog": {
     "title": "Superset Datasets",

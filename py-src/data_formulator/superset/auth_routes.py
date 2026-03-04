@@ -102,6 +102,52 @@ def me():
     return jsonify({"status": "ok", "user": user})
 
 
+@auth_bp.route("/sso/save-tokens", methods=["POST"])
+def sso_save_tokens():
+    """Receive Superset JWT tokens obtained via the Popup SSO flow and persist them in the Flask session."""
+    if not current_app.config.get("SUPERSET_ENABLED"):
+        return jsonify({"status": "error", "message": "Superset is not configured"}), 501
+
+    data = request.get_json(force=True)
+    access_token = data.get("access_token")
+    refresh_token = data.get("refresh_token")
+    user_from_popup = data.get("user", {})
+
+    if not access_token:
+        return jsonify({"status": "error", "message": "Missing access_token"}), 400
+
+    try:
+        user_info = _bridge().get_user_info(access_token)
+    except Exception:
+        user_info = user_from_popup
+
+    if not user_info or not user_info.get("id"):
+        user_info = _user_from_jwt_fallback(access_token, user_from_popup.get("username", ""))
+
+    session["superset_token"] = access_token
+    session["superset_refresh_token"] = refresh_token
+    session["superset_user"] = user_info
+    session.permanent = True
+
+    user_id = user_info.get("id")
+    if user_id is not None:
+        session["session_id"] = f"superset_user_{user_id}"
+    elif "session_id" not in session:
+        session["session_id"] = f"superset_anon_{secrets.token_hex(8)}"
+    session.permanent = True
+
+    return jsonify({
+        "status": "ok",
+        "user": {
+            "id": user_info.get("id"),
+            "username": user_info.get("username", ""),
+            "first_name": user_info.get("first_name", ""),
+            "last_name": user_info.get("last_name", ""),
+        },
+        "session_id": session["session_id"],
+    })
+
+
 @auth_bp.route("/logout", methods=["POST"])
 def logout():
     """Clear session data."""

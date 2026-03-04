@@ -49,6 +49,7 @@ export interface ServerConfig {
     DISABLE_FILE_UPLOAD: boolean;
     PROJECT_FRONT_PAGE: boolean;
     SUPERSET_ENABLED: boolean;
+    SSO_LOGIN_URL: string | null;
     AUTH_USER: AuthUser | null;
 }
 
@@ -178,6 +179,7 @@ const initialState: DataFormulatorState = {
         DISABLE_FILE_UPLOAD: false,
         PROJECT_FRONT_PAGE: false,
         SUPERSET_ENABLED: false,
+        SSO_LOGIN_URL: null,
         AUTH_USER: null,
     },
 

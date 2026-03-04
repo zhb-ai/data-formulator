@@ -291,7 +291,13 @@
     "connectedAs": "已登录：{{name}}",
     "signOut": "退出登录",
     "signOutConfirm": "确定退出登录并清除会话数据？",
-    "notConfigured": "未配置 Superset，将以访客模式继续。"
+    "notConfigured": "未配置 Superset，将以访客模式继续。",
+    "ssoLogin": "SSO 单点登录",
+    "ssoLoggingIn": "正在通过 SSO 登录...",
+    "ssoDescription": "使用企业账号通过单点登录系统认证",
+    "ssoPopupBlocked": "弹窗被拦截，请允许本站弹出窗口。",
+    "ssoFailed": "SSO 登录失败：{{message}}",
+    "ssoOrPassword": "或使用 Superset 账号登录"
   },
   "supersetCatalog": {
     "title": "Superset 数据集",

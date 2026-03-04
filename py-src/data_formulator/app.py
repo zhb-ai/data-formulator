@@ -186,6 +186,7 @@ OPEN_ENDPOINTS = frozenset([
     '/api/auth/login',
     '/api/auth/me',
     '/api/auth/logout',
+    '/api/auth/sso/save-tokens',
 ])
 
 @app.before_request
@@ -335,6 +336,8 @@ def get_app_config():
         "PROJECT_FRONT_PAGE": args['project_front_page'],
         "SESSION_ID": session_id,
         "SUPERSET_ENABLED": app.config.get('SUPERSET_ENABLED', False),
+        "SSO_LOGIN_URL": (app.config['SUPERSET_URL'].rstrip('/') + '/login/')
+                          if app.config.get('SUPERSET_ENABLED') else None,
         "AUTH_USER": {
             "id": superset_user.get("id"),
             "username": superset_user.get("username", ""),

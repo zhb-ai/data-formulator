@@ -19,6 +19,7 @@ export function getUrls() {
         AUTH_LOGIN: `/api/auth/login`,
         AUTH_ME: `/api/auth/me`,
         AUTH_LOGOUT: `/api/auth/logout`,
+        AUTH_SSO_SAVE_TOKENS: `/api/auth/sso/save-tokens`,
 
         SUPERSET_CATALOG_DATASETS: `/api/superset/catalog/datasets`,
         SUPERSET_LOAD_DATASET: `/api/superset/data/load-dataset`,

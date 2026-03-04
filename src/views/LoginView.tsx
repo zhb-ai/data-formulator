@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import React, { FC, useState } from 'react';
+import React, { FC, useEffect, useRef, useState } from 'react';
 import {
     Box,
     Button,
@@ -17,9 +17,10 @@ import {
 import LoginIcon from '@mui/icons-material/Login';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import StorageIcon from '@mui/icons-material/Storage';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { useTranslation } from 'react-i18next';
-import { useDispatch } from 'react-redux';
-import { dfActions, getSessionId } from '../app/dfSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import { DataFormulatorState, dfActions, getSessionId } from '../app/dfSlice';
 import { getUrls } from '../app/utils';
 import { AppDispatch } from '../app/store';
 import { toolName } from '../app/App';
@@ -35,11 +36,98 @@ export const LoginView: FC<LoginViewProps> = ({ onLoginSuccess, onGuestContinue,
     const theme = useTheme();
     const { t } = useTranslation();
     const dispatch = useDispatch<AppDispatch>();
+    const serverConfig = useSelector((state: DataFormulatorState) => state.serverConfig);
 
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const popupRef = useRef<Window | null>(null);
+    const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    useEffect(() => {
+        return () => {
+            if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+        };
+    }, []);
+
+    const handleSSOLogin = () => {
+        setLoading(true);
+        setError(null);
+
+        const baseLoginUrl = serverConfig.SSO_LOGIN_URL;
+        if (!baseLoginUrl) {
+            setError(t('auth.ssoFailed', { message: 'SSO not configured' }));
+            setLoading(false);
+            return;
+        }
+
+        const dfOrigin = encodeURIComponent(window.location.origin);
+        const next = encodeURIComponent(`/df-sso-bridge/?df_origin=${dfOrigin}`);
+        const ssoUrl = `${baseLoginUrl.replace(/\/$/, '')}?next=${next}`;
+
+        const width = 600;
+        const height = 700;
+        const left = window.screenX + (window.outerWidth - width) / 2;
+        const top = window.screenY + (window.outerHeight - height) / 2;
+        const popup = window.open(
+            ssoUrl,
+            'df-sso-login',
+            `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`
+        );
+
+        if (!popup) {
+            setError(t('auth.ssoPopupBlocked'));
+            setLoading(false);
+            return;
+        }
+
+        popupRef.current = popup;
+
+        const handleMessage = async (event: MessageEvent) => {
+            if (event.data?.type !== 'df-sso-auth') return;
+
+            window.removeEventListener('message', handleMessage);
+            if (pollTimerRef.current) { clearInterval(pollTimerRef.current); pollTimerRef.current = null; }
+
+            const { access_token, refresh_token, user } = event.data;
+
+            try {
+                const resp = await fetch(getUrls().AUTH_SSO_SAVE_TOKENS, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ access_token, refresh_token, user }),
+                });
+                const data = await resp.json();
+
+                if (data.status === 'ok') {
+                    await dispatch(getSessionId()).unwrap();
+                    const configResp = await fetch(getUrls().APP_CONFIG, { credentials: 'include' });
+                    const configData = await configResp.json();
+                    dispatch(dfActions.setServerConfig(configData));
+                    onLoginSuccess();
+                } else {
+                    setError(data.message || t('auth.ssoFailed', { message: 'Unknown error' }));
+                }
+            } catch (err: any) {
+                setError(err.message || 'Network error');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        window.addEventListener('message', handleMessage);
+
+        pollTimerRef.current = setInterval(() => {
+            if (popup.closed) {
+                if (pollTimerRef.current) { clearInterval(pollTimerRef.current); pollTimerRef.current = null; }
+                window.removeEventListener('message', handleMessage);
+                setLoading(false);
+            }
+        }, 1000);
+    };
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -129,24 +217,49 @@ export const LoginView: FC<LoginViewProps> = ({ onLoginSuccess, onGuestContinue,
 
                 {supersetEnabled ? (
                     <>
+                        {error && (
+                            <Alert severity="error" sx={{ fontSize: 13, width: '100%', mb: 1 }}>
+                                {t('auth.loginFailed', { message: error })}
+                            </Alert>
+                        )}
+
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, width: '100%' }}>
+                            <StorageIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                                {t('auth.supersetConnection')}
+                            </Typography>
+                        </Box>
+
+                        {serverConfig.SSO_LOGIN_URL && (
+                            <>
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    disabled={loading}
+                                    onClick={handleSSOLogin}
+                                    startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <OpenInNewIcon />}
+                                    sx={{ textTransform: 'none', width: '100%' }}
+                                    fullWidth
+                                >
+                                    {loading ? t('auth.ssoLoggingIn') : t('auth.ssoLogin')}
+                                </Button>
+                                <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, textAlign: 'center' }}>
+                                    {t('auth.ssoDescription')}
+                                </Typography>
+
+                                <Divider sx={{ my: 1.5, width: '100%' }}>
+                                    <Typography variant="body2" sx={{ color: 'text.secondary', px: 1, fontSize: 12 }}>
+                                        {t('auth.ssoOrPassword')}
+                                    </Typography>
+                                </Divider>
+                            </>
+                        )}
+
                         <Box
                             component="form"
                             onSubmit={handleLogin}
                             sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}
                         >
-                            {error && (
-                                <Alert severity="error" sx={{ fontSize: 13 }}>
-                                    {t('auth.loginFailed', { message: error })}
-                                </Alert>
-                            )}
-
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                <StorageIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                                <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                                    {t('auth.supersetConnection')}
-                                </Typography>
-                            </Box>
-
                             <TextField
                                 size="small"
                                 label={t('auth.username')}
@@ -168,7 +281,7 @@ export const LoginView: FC<LoginViewProps> = ({ onLoginSuccess, onGuestContinue,
 
                             <Button
                                 type="submit"
-                                variant="contained"
+                                variant={serverConfig.SSO_LOGIN_URL ? "outlined" : "contained"}
                                 color="primary"
                                 disabled={loading || !username || !password}
                                 startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <LoginIcon />}
