@@ -336,7 +336,7 @@ def get_app_config():
         "PROJECT_FRONT_PAGE": args['project_front_page'],
         "SESSION_ID": session_id,
         "SUPERSET_ENABLED": app.config.get('SUPERSET_ENABLED', False),
-        "SSO_LOGIN_URL": (app.config['SUPERSET_URL'].rstrip('/') + '/login/')
+        "SSO_LOGIN_URL": (app.config['SUPERSET_URL'].rstrip('/') + '/df-sso-bridge/')
                           if app.config.get('SUPERSET_ENABLED') else None,
         "AUTH_USER": {
             "id": superset_user.get("id"),

@@ -56,16 +56,15 @@ export const LoginView: FC<LoginViewProps> = ({ onLoginSuccess, onGuestContinue,
         setLoading(true);
         setError(null);
 
-        const baseLoginUrl = serverConfig.SSO_LOGIN_URL;
-        if (!baseLoginUrl) {
+        const bridgeUrl = serverConfig.SSO_LOGIN_URL;
+        if (!bridgeUrl) {
             setError(t('auth.ssoFailed', { message: 'SSO not configured' }));
             setLoading(false);
             return;
         }
 
         const dfOrigin = encodeURIComponent(window.location.origin);
-        const next = encodeURIComponent(`/df-sso-bridge/?df_origin=${dfOrigin}`);
-        const ssoUrl = `${baseLoginUrl.replace(/\/$/, '')}?next=${next}`;
+        const ssoUrl = `${bridgeUrl}?df_origin=${dfOrigin}`;
 
         const width = 600;
         const height = 700;
