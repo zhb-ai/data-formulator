@@ -68,6 +68,7 @@ interface SupersetDashboardsProps {
 }
 
 const MAX_COLUMN_DISPLAY = 60;
+const MAX_TOOLTIP_ROWS = 12;
 
 const ColumnChip: FC<{ columns: string[] }> = ({ columns }) => {
     const { t } = useTranslation();
@@ -99,9 +100,32 @@ const ColumnChip: FC<{ columns: string[] }> = ({ columns }) => {
     return (
         <Tooltip
             title={
-                <Box sx={{ maxWidth: 360, fontSize: 11, lineHeight: 1.8 }}>
+                <Box
+                    sx={{
+                        maxWidth: 520,
+                        display: 'grid',
+                        gridAutoFlow: 'column',
+                        gridTemplateRows: `repeat(${MAX_TOOLTIP_ROWS}, minmax(0, auto))`,
+                        gridAutoColumns: 'minmax(140px, max-content)',
+                        columnGap: 1.5,
+                        rowGap: 0.25,
+                        alignItems: 'start',
+                        fontSize: 11,
+                        lineHeight: 1.6,
+                    }}
+                >
                     {columns.map((col, i) => (
-                        <div key={i}>{col}</div>
+                        <Box
+                            key={i}
+                            sx={{
+                                minWidth: 0,
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                            }}
+                        >
+                            {col}
+                        </Box>
                     ))}
                 </Box>
             }
