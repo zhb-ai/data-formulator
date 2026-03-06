@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import '../scss/App.scss';
 
 import { useDispatch, useSelector } from "react-redux"; /* code change */
@@ -134,6 +134,8 @@ export const DataFormulatorFC = ({ }) => {
         };
     }, []);
 
+    const lastTestedModelKeyRef = useRef<string>('');
+
     useEffect(() => {
         // Only auto-select a model when none is selected. If the user already
         // chose a model (selectedModelId is set), respect that choice even if
@@ -142,6 +144,18 @@ export const DataFormulatorFC = ({ }) => {
         if (selectedModelId !== undefined) {
             return;
         }
+
+        if (models.length === 0) {
+            return;
+        }
+
+        // Build a stable key from model IDs to avoid re-testing the same set
+        // when the array reference changes but the content hasn't.
+        const modelKey = models.map(m => m.id).sort().join(',');
+        if (modelKey === lastTestedModelKeyRef.current) {
+            return;
+        }
+        lastTestedModelKeyRef.current = modelKey;
 
         const findWorkingModel = async () => {
             let testModel = async (model: ModelConfig) => {
@@ -174,9 +188,7 @@ export const DataFormulatorFC = ({ }) => {
             }
         };
 
-        if (models.length > 0) {
-            findWorkingModel();
-        }
+        findWorkingModel();
     }, [dispatch, models, selectedModelId]);
 
     const visPaneMain = (

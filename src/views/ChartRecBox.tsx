@@ -212,14 +212,14 @@ export const ChartRecBox: FC<ChartRecBoxProps> = function ({ tableId, placeHolde
     const conceptShelfItems = useSelector((state: DataFormulatorState) => state.conceptShelfItems);
     const activeModel = useSelector(dfSelectors.getActiveModel);
 
-
+    const modelName = activeModel?.model ?? '';
     let preferredMode = (
-        activeModel.model == 'gpt-5' ||
-        activeModel.model.startsWith('claude-sonnet-4') ||
-        activeModel.model.startsWith('claude-opus-4') ||
-        activeModel.model.startsWith('o1') ||
-        activeModel.model.startsWith('o3') ||
-        activeModel.model == 'gpt-4.1'
+        modelName == 'gpt-5' ||
+        modelName.startsWith('claude-sonnet-4') ||
+        modelName.startsWith('claude-opus-4') ||
+        modelName.startsWith('o1') ||
+        modelName.startsWith('o3') ||
+        modelName == 'gpt-4.1'
     ) ? "agent" : "interactive";
 
     const [mode, setMode] = useState<'agent' | 'interactive'>(preferredMode as 'agent' | 'interactive');

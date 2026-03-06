@@ -569,6 +569,7 @@ export const UnifiedDataUploadDialog: React.FC<UnifiedDataUploadDialogProps> = (
     const [filePreviewError, setFilePreviewError] = useState<string | null>(null);
     const [filePreviewFiles, setFilePreviewFiles] = useState<File[]>([]);
     const [filePreviewActiveIndex, setFilePreviewActiveIndex] = useState<number>(0);
+    const [isDragOver, setIsDragOver] = useState<boolean>(false);
 
     // URL tab state (separate from file upload)
     const [tableURL, setTableURL] = useState<string>("");
@@ -699,84 +700,116 @@ export const UnifiedDataUploadDialog: React.FC<UnifiedDataUploadDialogProps> = (
         onClose();
     }, [onClose]);
 
-    // File upload handler
-    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>): void => {
-        const files = event.target.files;
+    // Shared file processing logic
+    const processUploadedFiles = useCallback((selectedFiles: File[]): void => {
+        setFilePreviewFiles(selectedFiles);
+        setFilePreviewError(null);
+        setFilePreviewTables(null);
+        setFilePreviewLoading(true);
 
-        if (files && files.length > 0) {
-            const selectedFiles = Array.from(files);
-            setFilePreviewFiles(selectedFiles);
-            setFilePreviewError(null);
-            setFilePreviewTables(null);
-            setFilePreviewLoading(true);
+        const MAX_FILE_SIZE = 5 * 1024 * 1024;
+        const previewTables: DictTable[] = [];
+        const errors: string[] = [];
 
-            const MAX_FILE_SIZE = 5 * 1024 * 1024;
-            const previewTables: DictTable[] = [];
-            const errors: string[] = [];
+        const processFiles = async () => {
+            for (const file of selectedFiles) {
+                const uniqueName = getUniqueTableName(file.name, existingNames);
+                const isTextFile = file.type === 'text/csv' || 
+                    file.type === 'text/tab-separated-values' || 
+                    file.type === 'application/json' ||
+                    file.name.endsWith('.csv') || 
+                    file.name.endsWith('.tsv') || 
+                    file.name.endsWith('.json');
+                const isExcelFile = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                    file.type === 'application/vnd.ms-excel' ||
+                    file.name.endsWith('.xlsx') || 
+                    file.name.endsWith('.xls');
 
-            const processFiles = async () => {
-                for (const file of selectedFiles) {
-                    const uniqueName = getUniqueTableName(file.name, existingNames);
-                    const isTextFile = file.type === 'text/csv' || 
-                        file.type === 'text/tab-separated-values' || 
-                        file.type === 'application/json' ||
-                        file.name.endsWith('.csv') || 
-                        file.name.endsWith('.tsv') || 
-                        file.name.endsWith('.json');
-                    const isExcelFile = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-                        file.type === 'application/vnd.ms-excel' ||
-                        file.name.endsWith('.xlsx') || 
-                        file.name.endsWith('.xls');
-
-                    if (file.size > MAX_FILE_SIZE && isTextFile) {
-                        errors.push(`File ${file.name} is too large (${(file.size / (1024 * 1024)).toFixed(2)}MB). Use Database for large files.`);
-                        continue;
-                    }
-
-                    if (isTextFile) {
-                        try {
-                            const text = await file.text();
-                            const table = loadTextDataWrapper(uniqueName, text, file.type);
-                            if (table) {
-                                previewTables.push(table);
-                            } else {
-                                errors.push(`Failed to parse ${file.name}.`);
-                            }
-                        } catch {
-                            errors.push(`Failed to read ${file.name}.`);
-                        }
-                        continue;
-                    }
-
-                    if (isExcelFile) {
-                        try {
-                            const arrayBuffer = await file.arrayBuffer();
-                            const tables = await loadBinaryDataWrapper(uniqueName, arrayBuffer);
-                            if (tables.length > 0) {
-                                previewTables.push(...tables);
-                            } else {
-                                errors.push(`Failed to parse Excel file ${file.name}.`);
-                            }
-                        } catch {
-                            errors.push(`Failed to parse Excel file ${file.name}.`);
-                        }
-                        continue;
-                    }
-
-                    errors.push(`Unsupported file format: ${file.name}.`);
+                if (file.size > MAX_FILE_SIZE && isTextFile) {
+                    errors.push(`File ${file.name} is too large (${(file.size / (1024 * 1024)).toFixed(2)}MB). Use Database for large files.`);
+                    continue;
                 }
 
-                setFilePreviewTables(previewTables.length > 0 ? previewTables : null);
-                setFilePreviewError(errors.length > 0 ? errors.join(' ') : null);
-                setFilePreviewLoading(false);
-            };
+                if (isTextFile) {
+                    try {
+                        const text = await file.text();
+                        const table = loadTextDataWrapper(uniqueName, text, file.type);
+                        if (table) {
+                            previewTables.push(table);
+                        } else {
+                            errors.push(`Failed to parse ${file.name}.`);
+                        }
+                    } catch {
+                        errors.push(`Failed to read ${file.name}.`);
+                    }
+                    continue;
+                }
 
-            processFiles();
+                if (isExcelFile) {
+                    try {
+                        const arrayBuffer = await file.arrayBuffer();
+                        const tables = await loadBinaryDataWrapper(uniqueName, arrayBuffer);
+                        if (tables.length > 0) {
+                            previewTables.push(...tables);
+                        } else {
+                            errors.push(`Failed to parse Excel file ${file.name}.`);
+                        }
+                    } catch {
+                        errors.push(`Failed to parse Excel file ${file.name}.`);
+                    }
+                    continue;
+                }
+
+                errors.push(`Unsupported file format: ${file.name}.`);
+            }
+
+            setFilePreviewTables(previewTables.length > 0 ? previewTables : null);
+            setFilePreviewError(errors.length > 0 ? errors.join(' ') : null);
+            setFilePreviewLoading(false);
+        };
+
+        processFiles();
+    }, [existingNames]);
+
+    // File input change handler
+    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>): void => {
+        const files = event.target.files;
+        if (files && files.length > 0) {
+            processUploadedFiles(Array.from(files));
         }
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
     };
+
+    // Drag-and-drop handlers
+    const handleDragOver = useCallback((event: React.DragEvent): void => {
+        event.preventDefault();
+        event.stopPropagation();
+    }, []);
+
+    const handleDragEnter = useCallback((event: React.DragEvent): void => {
+        event.preventDefault();
+        event.stopPropagation();
+        setIsDragOver(true);
+    }, []);
+
+    const handleDragLeave = useCallback((event: React.DragEvent): void => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.currentTarget.contains(event.relatedTarget as Node)) return;
+        setIsDragOver(false);
+    }, []);
+
+    const handleFileDrop = useCallback((event: React.DragEvent): void => {
+        event.preventDefault();
+        event.stopPropagation();
+        setIsDragOver(false);
+        const files = event.dataTransfer.files;
+        if (files && files.length > 0) {
+            processUploadedFiles(Array.from(files));
+        }
+    }, [processUploadedFiles]);
 
     // Reset activeIndex when tables change
     useEffect(() => {
@@ -1142,18 +1175,23 @@ export const UnifiedDataUploadDialog: React.FC<UnifiedDataUploadDialogProps> = (
                             <Box
                                 sx={{
                                     border: '2px dashed',
-                                    borderColor: 'divider',
+                                    borderColor: isDragOver ? 'primary.main' : 'divider',
                                     borderRadius: 2,
                                     p: showFilePreview ? 2 : 3,
                                     textAlign: 'center',
                                     cursor: 'pointer',
                                     transition: 'all 0.2s',
+                                    backgroundColor: isDragOver ? alpha(theme.palette.primary.main, 0.08) : 'transparent',
                                     '&:hover': {
                                         borderColor: 'primary.main',
                                         backgroundColor: alpha(theme.palette.primary.main, 0.04),
                                     }
                                 }}
                                 onClick={() => fileInputRef.current?.click()}
+                                onDrop={handleFileDrop}
+                                onDragOver={handleDragOver}
+                                onDragEnter={handleDragEnter}
+                                onDragLeave={handleDragLeave}
                             >
                                 <UploadFileIcon sx={{ fontSize: showFilePreview ? 28 : 36, color: 'text.secondary', mb: 1 }} />
                                 <Typography variant={showFilePreview ? "body2" : "subtitle1"} gutterBottom>

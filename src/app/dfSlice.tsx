@@ -1112,7 +1112,7 @@ export const dfSelectors = {
     getAllModels: (state: DataFormulatorState): ModelConfig[] => {
         return [...(state.globalModels ?? []), ...state.models];
     },
-    getActiveModel: (state: DataFormulatorState): ModelConfig => {
+    getActiveModel: (state: DataFormulatorState): ModelConfig | undefined => {
         const all = [...(state.globalModels ?? []), ...state.models];
         return all.find(m => m.id == state.selectedModelId) ?? all[0];
     },
