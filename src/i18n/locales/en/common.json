@@ -333,6 +333,16 @@
     "ssoFailed": "SSO login failed: {{message}}",
     "ssoOrPassword": "or sign in with Superset account"
   },
+  "supersetPanel": {
+    "datasets": "Datasets",
+    "dashboards": "Dashboards"
+  },
+  "supersetDashboard": {
+    "title": "Superset Dashboards",
+    "searchPlaceholder": "Search dashboards...",
+    "noDashboards": "No dashboards found.",
+    "noDatasetsInDashboard": "No datasets in this dashboard."
+  },
   "supersetCatalog": {
     "title": "Superset Datasets",
     "searchPlaceholder": "Search datasets...",

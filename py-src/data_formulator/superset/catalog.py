@@ -68,10 +68,72 @@ class SupersetCatalog:
     ) -> dict:
         return self.client.get_dataset_detail(access_token, dataset_id)
 
+    # -- dashboards ------------------------------------------------------
+
+    def get_dashboard_summary(
+        self,
+        access_token: str,
+        user_id: int,
+    ) -> list[dict]:
+        """Lightweight dashboard list (cached per user)."""
+        cache_key = f"dashboards_{user_id}"
+        cached = self._cache.get(cache_key)
+        if cached and time.time() - cached["ts"] < self.cache_ttl:
+            return cached["data"]
+
+        raw = self.client.list_dashboards(access_token)
+        dashboards: list[dict] = []
+        for db in raw.get("result", []):
+            owners = db.get("owners") or []
+            dashboards.append(
+                {
+                    "id": db["id"],
+                    "title": db.get("dashboard_title", ""),
+                    "slug": db.get("slug", ""),
+                    "status": db.get("status", "published"),
+                    "url": db.get("url", ""),
+                    "changed_on_delta_humanized": db.get("changed_on_delta_humanized", ""),
+                    "owners": [
+                        o.get("first_name", "") + " " + o.get("last_name", "")
+                        for o in owners
+                    ],
+                }
+            )
+
+        self._cache[cache_key] = {"data": dashboards, "ts": time.time()}
+        return dashboards
+
+    def get_dashboard_datasets(
+        self,
+        access_token: str,
+        dashboard_id: int,
+    ) -> list[dict]:
+        """Return datasets used by a specific dashboard."""
+        raw = self.client.get_dashboard_datasets(access_token, dashboard_id)
+        datasets: list[dict] = []
+        for ds in raw.get("result", []):
+            columns = ds.get("columns") or []
+            datasets.append(
+                {
+                    "id": ds.get("id"),
+                    "name": ds.get("table_name", ds.get("name", "")),
+                    "schema": ds.get("schema", ""),
+                    "database": (ds.get("database") or {}).get("database_name", "")
+                        if isinstance(ds.get("database"), dict)
+                        else ds.get("database_name", ""),
+                    "description": ds.get("description", "") or "",
+                    "column_count": len(columns),
+                    "column_names": [c.get("column_name", "") for c in columns],
+                    "row_count": ds.get("row_count"),
+                }
+            )
+        return datasets
+
     # -- cache management ------------------------------------------------
 
     def invalidate(self, user_id: int | None = None) -> None:
         if user_id is not None:
             self._cache.pop(f"summary_{user_id}", None)
+            self._cache.pop(f"dashboards_{user_id}", None)
         else:
             self._cache.clear()

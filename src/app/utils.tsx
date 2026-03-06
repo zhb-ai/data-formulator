@@ -22,6 +22,8 @@ export function getUrls() {
         AUTH_SSO_SAVE_TOKENS: `/api/auth/sso/save-tokens`,
 
         SUPERSET_CATALOG_DATASETS: `/api/superset/catalog/datasets`,
+        SUPERSET_CATALOG_DASHBOARDS: `/api/superset/catalog/dashboards`,
+        SUPERSET_DASHBOARD_DATASETS: `/api/superset/catalog/dashboards`,
         SUPERSET_LOAD_DATASET: `/api/superset/data/load-dataset`,
 
         EXAMPLE_DATASETS: `/api/example-datasets`,

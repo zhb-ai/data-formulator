@@ -102,6 +102,34 @@ def me():
     return jsonify({"status": "ok", "user": user})
 
 
+@auth_bp.route("/debug-token", methods=["GET"])
+def debug_token():
+    """Temporary debug endpoint to inspect JWT saved in DF session."""
+    access_token = session.get("superset_token")
+    refresh_token = session.get("superset_refresh_token")
+    user = session.get("superset_user")
+    if not access_token:
+        return jsonify({"status": "error", "message": "No superset token in session"}), 404
+
+    claims = {}
+    try:
+        parts = access_token.split(".")
+        if len(parts) >= 2:
+            payload = parts[1]
+            padding = "=" * (-len(payload) % 4)
+            claims = json.loads(base64.urlsafe_b64decode(payload + padding).decode("utf-8"))
+    except Exception as exc:
+        claims = {"decode_error": str(exc)}
+
+    return jsonify({
+        "status": "ok",
+        "user": user,
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "claims": claims,
+    })
+
+
 @auth_bp.route("/sso/save-tokens", methods=["POST"])
 def sso_save_tokens():
     """Receive Superset JWT tokens obtained via the Popup SSO flow and persist them in the Flask session."""

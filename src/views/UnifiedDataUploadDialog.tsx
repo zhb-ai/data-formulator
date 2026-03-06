@@ -42,7 +42,7 @@ import { DataLoadingChat } from './DataLoadingChat';
 import { DatasetSelectionView, DatasetMetadata } from './TableSelectionView';
 import { getUrls } from '../app/utils';
 import { DBManagerPane } from './DBTableManager';
-import { SupersetCatalog } from './SupersetCatalog';
+import { SupersetPanel } from './SupersetPanel';
 import { MultiTablePreview } from './MultiTablePreview';
 import { 
     FormControlLabel, 
@@ -121,7 +121,7 @@ const SplitDatabasePane: React.FC<{ serverConfig: any }> = ({ serverConfig }) =>
     return (
         <Box ref={containerRef} sx={{ display: 'flex', flexDirection: 'row', height: '100%' }}>
             <Box sx={{ width: `${leftPct}%`, minWidth: 0, overflowY: 'auto' }}>
-                <SupersetCatalog onDatasetLoaded={() => {
+                <SupersetPanel onDatasetLoaded={() => {
                     window.dispatchEvent(new CustomEvent('superset-dataset-loaded'));
                 }} />
             </Box>

@@ -93,6 +93,67 @@ def list_datasets():
     return jsonify({"status": "ok", "datasets": datasets, "count": len(datasets)})
 
 
+@catalog_bp.route("/dashboards", methods=["GET"])
+def list_dashboards():
+    """List dashboards visible to the current user."""
+    token, user = _require_auth()
+    if not token:
+        return jsonify({"status": "error", "message": "Not authenticated"}), 401
+
+    catalog = current_app.extensions["superset_catalog"]
+    try:
+        dashboards = catalog.get_dashboard_summary(token, user["id"])
+    except HTTPError as e:
+        if e.response is not None and e.response.status_code == 401:
+            logger.info("Superset API 返回 401，尝试刷新 token 后重试")
+            token = _try_refresh()
+            if token:
+                try:
+                    dashboards = catalog.get_dashboard_summary(token, user["id"])
+                except Exception as retry_err:
+                    logger.warning("刷新后重试仍然失败: %s", retry_err)
+                    return jsonify({"status": "error", "message": "Superset 认证失败，请重新登录"}), 401
+            else:
+                return jsonify({"status": "error", "message": "Superset 认证已过期，请重新登录"}), 401
+        else:
+            logger.warning("Superset API 调用失败: %s", e)
+            return jsonify({"status": "error", "message": f"Superset 请求失败: {e}"}), 502
+    except Exception as e:
+        logger.warning("获取仪表盘列表失败: %s", e)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+    return jsonify({"status": "ok", "dashboards": dashboards, "count": len(dashboards)})
+
+
+@catalog_bp.route("/dashboards/<int:dashboard_id>/datasets", methods=["GET"])
+def get_dashboard_datasets(dashboard_id: int):
+    """Get datasets used by a specific dashboard."""
+    token, user = _require_auth()
+    if not token:
+        return jsonify({"status": "error", "message": "Not authenticated"}), 401
+
+    catalog = current_app.extensions["superset_catalog"]
+    try:
+        datasets = catalog.get_dashboard_datasets(token, dashboard_id)
+    except HTTPError as e:
+        if e.response is not None and e.response.status_code == 401:
+            token = _try_refresh()
+            if token:
+                try:
+                    datasets = catalog.get_dashboard_datasets(token, dashboard_id)
+                except Exception:
+                    return jsonify({"status": "error", "message": "Superset 认证失败，请重新登录"}), 401
+            else:
+                return jsonify({"status": "error", "message": "Superset 认证已过期，请重新登录"}), 401
+        else:
+            return jsonify({"status": "error", "message": f"Superset 请求失败: {e}"}), 502
+    except Exception as e:
+        logger.warning("获取仪表盘数据集失败: %s", e)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+    return jsonify({"status": "ok", "datasets": datasets, "count": len(datasets)})
+
+
 @catalog_bp.route("/datasets/<int:dataset_id>", methods=["GET"])
 def get_dataset_detail(dataset_id: int):
     """Full detail for a single dataset."""

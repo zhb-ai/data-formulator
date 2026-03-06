@@ -50,6 +50,43 @@ class SupersetClient:
         resp.raise_for_status()
         return resp.json().get("result", {})
 
+    # -- dashboards ------------------------------------------------------
+
+    def list_dashboards(
+        self,
+        access_token: str,
+        page: int = 0,
+        page_size: int = 100,
+    ) -> dict:
+        """Return dashboards the current user can see.
+
+        Uses the same Rison format as Superset's own frontend.
+        Non-admin users will only see published dashboards they have
+        datasource access to (controlled by DashboardAccessFilter).
+        """
+        rison_q = (
+            f"(order_column:changed_on_delta_humanized,"
+            f"order_direction:desc,"
+            f"page:{page},page_size:{page_size})"
+        )
+        resp = requests.get(
+            f"{self.base_url}/api/v1/dashboard/?q={rison_q}",
+            headers=self._headers(access_token),
+            timeout=self.timeout,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    def get_dashboard_datasets(self, access_token: str, dashboard_id: int) -> dict:
+        """Return all datasets used by charts in a dashboard."""
+        resp = requests.get(
+            f"{self.base_url}/api/v1/dashboard/{dashboard_id}/datasets",
+            headers=self._headers(access_token),
+            timeout=self.timeout,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
     # -- SQL Lab ---------------------------------------------------------
 
     def get_csrf_token(self, access_token: str) -> str:

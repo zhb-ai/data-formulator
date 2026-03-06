@@ -299,6 +299,16 @@
     "ssoFailed": "SSO 登录失败：{{message}}",
     "ssoOrPassword": "或使用 Superset 账号登录"
   },
+  "supersetPanel": {
+    "datasets": "数据集",
+    "dashboards": "仪表盘"
+  },
+  "supersetDashboard": {
+    "title": "Superset 仪表盘",
+    "searchPlaceholder": "搜索仪表盘...",
+    "noDashboards": "未找到仪表盘。",
+    "noDatasetsInDashboard": "该仪表盘中没有数据集。"
+  },
   "supersetCatalog": {
     "title": "Superset 数据集",
     "searchPlaceholder": "搜索数据集...",
