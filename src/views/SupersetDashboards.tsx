@@ -67,6 +67,52 @@ interface SupersetDashboardsProps {
     onDatasetLoaded?: (tableName: string, rowCount: number) => void;
 }
 
+const MAX_COLUMN_DISPLAY = 60;
+
+const ColumnChip: FC<{ columns: string[] }> = ({ columns }) => {
+    const { t } = useTranslation();
+    const joined = columns.join(', ');
+    const truncated = joined.length > MAX_COLUMN_DISPLAY;
+    const display = truncated ? joined.slice(0, MAX_COLUMN_DISPLAY) + '…' : joined;
+
+    const chip = (
+        <Chip
+            size="small"
+            variant="outlined"
+            label={`${t('supersetCatalog.columns', { count: columns.length })}: ${display}`}
+            sx={{
+                fontSize: 9,
+                height: 'auto',
+                minHeight: 16,
+                color: 'text.disabled',
+                borderColor: 'divider',
+                '& .MuiChip-label': {
+                    whiteSpace: 'normal',
+                    lineHeight: 1.3,
+                    py: 0.25,
+                },
+                maxWidth: '100%',
+            }}
+        />
+    );
+
+    return (
+        <Tooltip
+            title={
+                <Box sx={{ maxWidth: 360, fontSize: 11, lineHeight: 1.8 }}>
+                    {columns.map((col, i) => (
+                        <div key={i}>{col}</div>
+                    ))}
+                </Box>
+            }
+            placement="top"
+            arrow
+        >
+            {chip}
+        </Tooltip>
+    );
+};
+
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
@@ -363,7 +409,7 @@ export const SupersetDashboards: FC<SupersetDashboardsProps> = ({ onDatasetLoade
                                                         {ds.name}
                                                     </Typography>
                                                 </Box>
-                                                <Box sx={{ display: 'flex', gap: 0.5, mt: 0.25, alignItems: 'center' }}>
+                                                <Box sx={{ display: 'flex', gap: 0.5, mt: 0.25, alignItems: 'center', flexWrap: 'wrap' }}>
                                                     <Typography variant="caption" sx={{ fontSize: 10, color: 'text.disabled' }}>
                                                         {`${ds.database}.${ds.schema}`}
                                                     </Typography>
@@ -372,6 +418,11 @@ export const SupersetDashboards: FC<SupersetDashboardsProps> = ({ onDatasetLoade
                                                         <Chip size="small" variant="outlined" label={t('supersetCatalog.rows', { count: ds.row_count })} sx={{ fontSize: 9, height: 16, color: 'text.disabled', borderColor: 'divider' }} />
                                                     )}
                                                 </Box>
+                                                {ds.column_names.length > 0 && (
+                                                    <Box sx={{ mt: 0.5 }}>
+                                                        <ColumnChip columns={ds.column_names} />
+                                                    </Box>
+                                                )}
                                             </Box>
                                             <Box sx={{ display: 'flex', gap: 0.5, ml: 1, flexShrink: 0 }}>
                                                 <Tooltip title={t('supersetCatalog.loadOverwrite')}>
