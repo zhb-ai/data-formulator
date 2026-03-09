@@ -30,23 +30,23 @@ export const SupersetPanel: FC<SupersetPanelProps> = ({ onDatasetLoaded }) => {
                 }}
             >
                 <Tab
-                    icon={<TableRowsIcon sx={{ fontSize: 16 }} />}
-                    iconPosition="start"
-                    label={t('supersetPanel.datasets', 'Datasets')}
-                />
-                <Tab
                     icon={<DashboardIcon sx={{ fontSize: 16 }} />}
                     iconPosition="start"
                     label={t('supersetPanel.dashboards', 'Dashboards')}
+                />
+                <Tab
+                    icon={<TableRowsIcon sx={{ fontSize: 16 }} />}
+                    iconPosition="start"
+                    label={t('supersetPanel.datasets', 'Datasets')}
                 />
             </Tabs>
 
             <Box sx={{ flex: 1, overflow: 'hidden' }}>
                 <Box sx={{ display: tab === 0 ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
-                    <SupersetCatalog onDatasetLoaded={onDatasetLoaded} />
+                    <SupersetDashboards onDatasetLoaded={onDatasetLoaded} />
                 </Box>
                 <Box sx={{ display: tab === 1 ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
-                    <SupersetDashboards onDatasetLoaded={onDatasetLoaded} />
+                    <SupersetCatalog onDatasetLoaded={onDatasetLoaded} />
                 </Box>
             </Box>
         </Box>
