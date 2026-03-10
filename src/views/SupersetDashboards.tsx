@@ -33,10 +33,12 @@ import TableRowsIcon from '@mui/icons-material/TableRows';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import PersonIcon from '@mui/icons-material/Person';
+import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
 import { DataFormulatorState } from '../app/dfSlice';
 import { getUrls } from '../app/utils';
+import { DashboardFilterPayload, SupersetDashboardFilterDialog } from './SupersetDashboardFilterDialog';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -161,6 +163,9 @@ export const SupersetDashboards: FC<SupersetDashboardsProps> = ({ onDatasetLoade
     const [suffixDialogOpen, setSuffixDialogOpen] = useState(false);
     const [suffixDialogDs, setSuffixDialogDs] = useState<DashboardDataset | null>(null);
     const [suffixInput, setSuffixInput] = useState('');
+    const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+    const [filterDialogDashboard, setFilterDialogDashboard] = useState<Dashboard | null>(null);
+    const [filterDialogDataset, setFilterDialogDataset] = useState<DashboardDataset | null>(null);
 
     /* ---------- fetch dashboard list ---------- */
 
@@ -233,7 +238,11 @@ export const SupersetDashboards: FC<SupersetDashboardsProps> = ({ onDatasetLoade
 
     /* ---------- load a dataset (reuse existing endpoint) ---------- */
 
-    const loadDataset = async (dataset: DashboardDataset, tableNameOverride?: string) => {
+    const loadDataset = async (
+        dataset: DashboardDataset,
+        tableNameOverride?: string,
+        filters: DashboardFilterPayload[] = [],
+    ) => {
         setLoadingDatasetId(dataset.id);
         setError(null);
         setSuccessMessage(null);
@@ -243,6 +252,7 @@ export const SupersetDashboards: FC<SupersetDashboardsProps> = ({ onDatasetLoade
                 row_limit: 20000,
             };
             if (tableNameOverride) body.table_name = tableNameOverride;
+            if (filters.length > 0) body.filters = filters;
 
             const resp = await fetch(getUrls().SUPERSET_LOAD_DATASET, {
                 method: 'POST',
@@ -449,6 +459,21 @@ export const SupersetDashboards: FC<SupersetDashboardsProps> = ({ onDatasetLoade
                                                 )}
                                             </Box>
                                             <Box sx={{ display: 'flex', gap: 0.5, ml: 1, flexShrink: 0 }}>
+                                                <Tooltip title="按条件加载">
+                                                    <span>
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={() => {
+                                                                setFilterDialogDashboard(db);
+                                                                setFilterDialogDataset(ds);
+                                                                setFilterDialogOpen(true);
+                                                            }}
+                                                            disabled={loadingDatasetId === ds.id}
+                                                        >
+                                                            <FilterAltIcon sx={{ fontSize: 16 }} />
+                                                        </IconButton>
+                                                    </span>
+                                                </Tooltip>
                                                 <Tooltip title={t('supersetCatalog.loadOverwrite')}>
                                                     <span>
                                                         <IconButton
@@ -565,6 +590,22 @@ export const SupersetDashboards: FC<SupersetDashboardsProps> = ({ onDatasetLoade
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            <SupersetDashboardFilterDialog
+                open={filterDialogOpen}
+                dashboardId={filterDialogDashboard?.id ?? 0}
+                dashboardTitle={filterDialogDashboard?.title ?? ''}
+                dataset={filterDialogDataset}
+                onClose={() => {
+                    setFilterDialogOpen(false);
+                    setFilterDialogDashboard(null);
+                    setFilterDialogDataset(null);
+                }}
+                onSubmit={async (filters, tableNameOverride) => {
+                    if (!filterDialogDataset) return;
+                    await loadDataset(filterDialogDataset, tableNameOverride, filters);
+                }}
+            />
         </Box>
     );
 };

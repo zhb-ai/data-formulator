@@ -24,6 +24,8 @@ export function getUrls() {
         SUPERSET_CATALOG_DATASETS: `/api/superset/catalog/datasets`,
         SUPERSET_CATALOG_DASHBOARDS: `/api/superset/catalog/dashboards`,
         SUPERSET_DASHBOARD_DATASETS: `/api/superset/catalog/dashboards`,
+        SUPERSET_DASHBOARD_FILTERS: `/api/superset/catalog/dashboards`,
+        SUPERSET_FILTER_OPTIONS: `/api/superset/catalog/filters/options`,
         SUPERSET_LOAD_DATASET: `/api/superset/data/load-dataset`,
 
         EXAMPLE_DATASETS: `/api/example-datasets`,

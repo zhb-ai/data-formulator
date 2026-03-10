@@ -7,7 +7,7 @@ import json
 import logging
 import time
 
-from flask import Blueprint, current_app, jsonify, session
+from flask import Blueprint, current_app, jsonify, request, session
 from requests.exceptions import HTTPError
 
 logger = logging.getLogger(__name__)
@@ -152,6 +152,85 @@ def get_dashboard_datasets(dashboard_id: int):
         return jsonify({"status": "error", "message": str(e)}), 500
 
     return jsonify({"status": "ok", "datasets": datasets, "count": len(datasets)})
+
+
+@catalog_bp.route("/dashboards/<int:dashboard_id>/filters", methods=["GET"])
+def get_dashboard_filters(dashboard_id: int):
+    """Get native filters defined for a dashboard."""
+    token, user = _require_auth()
+    if not token:
+        return jsonify({"status": "error", "message": "Not authenticated"}), 401
+
+    dataset_id_raw = request.args.get("dataset_id")
+    dataset_id = int(dataset_id_raw) if dataset_id_raw else None
+
+    catalog = current_app.extensions["superset_catalog"]
+    try:
+        filters = catalog.get_dashboard_filters(token, dashboard_id, dataset_id)
+    except HTTPError as e:
+        if e.response is not None and e.response.status_code == 401:
+            token = _try_refresh()
+            if token:
+                try:
+                    filters = catalog.get_dashboard_filters(token, dashboard_id, dataset_id)
+                except Exception:
+                    return jsonify({"status": "error", "message": "Superset 认证失败，请重新登录"}), 401
+            else:
+                return jsonify({"status": "error", "message": "Superset 认证已过期，请重新登录"}), 401
+        else:
+            return jsonify({"status": "error", "message": f"Superset 请求失败: {e}"}), 502
+    except Exception as e:
+        logger.warning("获取仪表盘筛选项失败: %s", e)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+    return jsonify({
+        "status": "ok",
+        "dashboard_id": dashboard_id,
+        "dataset_id": dataset_id,
+        "filters": filters,
+        "count": len(filters),
+    })
+
+
+@catalog_bp.route("/filters/options", methods=["GET"])
+def get_filter_options():
+    """Get option values for a dashboard filter field."""
+    token, user = _require_auth()
+    if not token:
+        return jsonify({"status": "error", "message": "Not authenticated"}), 401
+
+    dataset_id_raw = request.args.get("dataset_id")
+    column_name = (request.args.get("column_name") or "").strip()
+    keyword = (request.args.get("keyword") or "").strip()
+    limit = int(request.args.get("limit", 50))
+    offset = int(request.args.get("offset", 0))
+
+    if not dataset_id_raw or not column_name:
+        return jsonify({"status": "error", "message": "dataset_id and column_name are required"}), 400
+
+    dataset_id = int(dataset_id_raw)
+    catalog = current_app.extensions["superset_catalog"]
+    try:
+        payload = catalog.get_filter_options(token, dataset_id, column_name, keyword, limit, offset)
+    except HTTPError as e:
+        if e.response is not None and e.response.status_code == 401:
+            token = _try_refresh()
+            if token:
+                try:
+                    payload = catalog.get_filter_options(token, dataset_id, column_name, keyword, limit, offset)
+                except Exception:
+                    return jsonify({"status": "error", "message": "Superset 认证失败，请重新登录"}), 401
+            else:
+                return jsonify({"status": "error", "message": "Superset 认证已过期，请重新登录"}), 401
+        else:
+            return jsonify({"status": "error", "message": f"Superset 请求失败: {e}"}), 502
+    except ValueError as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+    except Exception as e:
+        logger.warning("获取筛选候选值失败: %s", e)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+    return jsonify({"status": "ok", **payload})
 
 
 @catalog_bp.route("/datasets/<int:dataset_id>", methods=["GET"])

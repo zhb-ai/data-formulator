@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+from urllib.parse import quote
 
 import requests
 
@@ -50,6 +51,29 @@ class SupersetClient:
         resp.raise_for_status()
         return resp.json().get("result", {})
 
+    def get_dataset_distinct_values(self, access_token: str, column_name: str) -> dict:
+        resp = requests.get(
+            f"{self.base_url}/api/v1/dataset/distinct/{quote(column_name, safe='')}",
+            headers=self._headers(access_token),
+            timeout=self.timeout,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    def get_datasource_column_values(
+        self,
+        access_token: str,
+        dataset_id: int,
+        column_name: str,
+    ) -> dict:
+        resp = requests.get(
+            f"{self.base_url}/api/v1/datasource/table/{dataset_id}/column/{quote(column_name, safe='')}/values/",
+            headers=self._headers(access_token),
+            timeout=self.timeout,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
     # -- dashboards ------------------------------------------------------
 
     def list_dashboards(
@@ -86,6 +110,16 @@ class SupersetClient:
         )
         resp.raise_for_status()
         return resp.json()
+
+    def get_dashboard_detail(self, access_token: str, dashboard_id: int) -> dict:
+        """Return full dashboard detail including json_metadata."""
+        resp = requests.get(
+            f"{self.base_url}/api/v1/dashboard/{dashboard_id}",
+            headers=self._headers(access_token),
+            timeout=self.timeout,
+        )
+        resp.raise_for_status()
+        return resp.json().get("result", {})
 
     # -- SQL Lab ---------------------------------------------------------
 
