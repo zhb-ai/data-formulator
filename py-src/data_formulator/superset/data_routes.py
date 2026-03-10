@@ -86,7 +86,7 @@ def _quote_identifier(name: str) -> str:
 
 def _column_ref(name: str) -> str:
     stripped = (name or "").strip()
-    if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", stripped):
+    if re.fullmatch(r"\w+", stripped, flags=re.UNICODE):
         return stripped
     return _quote_identifier(stripped)
 

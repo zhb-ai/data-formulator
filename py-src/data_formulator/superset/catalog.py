@@ -241,6 +241,10 @@ class SupersetCatalog:
         filter_defs: list[dict] = []
         seen: set[tuple[str, int, str]] = set()
 
+        is_time_filter_type = lambda ft: any(
+            tok in (ft or "").lower() for tok in ("time", "date", "temporal")
+        )
+
         for raw_filter in raw_filters:
             if not isinstance(raw_filter, dict):
                 continue
@@ -255,11 +259,89 @@ class SupersetCatalog:
                 or control_values.get("multi_select")
             )
             required = bool(raw_filter.get("required"))
+            time_filter = is_time_filter_type(filter_type)
 
-            for target in targets:
+            if time_filter and dataset_id is not None:
+                requested_dataset_id = int(dataset_id)
+                dataset_detail = self._get_dataset_detail_cached(access_token, requested_dataset_id, dataset_cache)
+                columns = dataset_detail.get("columns") or []
+                column_name = ""
+
+                for target in targets:
+                    if not isinstance(target, dict):
+                        continue
+                    target_dataset_id = target.get("datasetId") or target.get("dataset_id")
+                    if target_dataset_id and int(target_dataset_id) != requested_dataset_id:
+                        continue
+                    column_obj = target.get("column") or {}
+                    column_name = (
+                        column_obj.get("name")
+                        or target.get("column_name")
+                        or target.get("columnName")
+                        or ""
+                    )
+                    if column_name:
+                        break
+
+                if not column_name:
+                    main_dttm = (dataset_detail.get("main_dttm_col") or "").strip()
+                    if main_dttm:
+                        column_name = main_dttm
+                    else:
+                        for col in columns:
+                            if col.get("is_dttm"):
+                                column_name = col.get("column_name") or col.get("name") or ""
+                                if column_name:
+                                    break
+
+                if not column_name:
+                    continue
+
+                dedupe_key = (filter_id, requested_dataset_id, column_name)
+                if dedupe_key in seen:
+                    continue
+                seen.add(dedupe_key)
+
+                column_meta = next(
+                    (
+                        col for col in columns
+                        if (col.get("column_name") or col.get("name") or "") == column_name
+                    ),
+                    None,
+                )
+                column_type = self._normalize_column_type(column_meta)
+                input_type = self._infer_input_type(filter_type, column_type)
+                filter_defs.append(
+                    {
+                        "id": filter_id,
+                        "name": filter_name,
+                        "filter_type": filter_type or input_type,
+                        "input_type": input_type,
+                        "dataset_id": requested_dataset_id,
+                        "dataset_name": dataset_detail.get("table_name") or "",
+                        "column_name": column_name,
+                        "column_type": column_type,
+                        "multi": multi,
+                        "required": required,
+                        "supports_search": False,
+                    }
+                )
+                continue
+
+            effective_targets = list(targets)
+            if not effective_targets and time_filter and dataset_id is not None:
+                effective_targets = [{"datasetId": dataset_id}]
+
+            for target in effective_targets:
                 if not isinstance(target, dict):
                     continue
                 target_dataset_id = target.get("datasetId") or target.get("dataset_id")
+                if not target_dataset_id:
+                    continue
+                target_dataset_id = int(target_dataset_id)
+                if dataset_id is not None and target_dataset_id != dataset_id:
+                    continue
+
                 column_obj = target.get("column") or {}
                 column_name = (
                     column_obj.get("name")
@@ -267,10 +349,21 @@ class SupersetCatalog:
                     or target.get("columnName")
                     or ""
                 )
-                if not target_dataset_id or not column_name:
-                    continue
-                target_dataset_id = int(target_dataset_id)
-                if dataset_id is not None and target_dataset_id != dataset_id:
+
+                dataset_detail = self._get_dataset_detail_cached(access_token, target_dataset_id, dataset_cache)
+                columns = dataset_detail.get("columns") or []
+
+                if not column_name and time_filter:
+                    main_dttm = (dataset_detail.get("main_dttm_col") or "").strip()
+                    if main_dttm:
+                        column_name = main_dttm
+                    else:
+                        for col in columns:
+                            if col.get("is_dttm"):
+                                column_name = col.get("column_name") or col.get("name") or ""
+                                break
+
+                if not column_name:
                     continue
 
                 dedupe_key = (filter_id, target_dataset_id, column_name)
@@ -278,8 +371,6 @@ class SupersetCatalog:
                     continue
                 seen.add(dedupe_key)
 
-                dataset_detail = self._get_dataset_detail_cached(access_token, target_dataset_id, dataset_cache)
-                columns = dataset_detail.get("columns") or []
                 column_meta = next(
                     (
                         col for col in columns

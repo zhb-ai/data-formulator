@@ -355,38 +355,35 @@ export const SupersetCatalog: FC<SupersetCatalogProps> = ({ onDatasetLoaded }) =
                                 )}
                             </Box>
 
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, ml: 1, flexShrink: 0, alignSelf: 'center', alignItems: 'stretch', width: 170 }}>
-                                <Button
-                                    size="small"
-                                    variant="outlined"
-                                    onClick={() => loadDataset(ds)}
-                                    disabled={loadingDatasetId === ds.id}
-                                    startIcon={
-                                        loadingDatasetId === ds.id
-                                            ? <CircularProgress size={14} />
-                                            : <DownloadIcon sx={{ fontSize: 16 }} />
-                                    }
-                                    sx={{ textTransform: 'none', fontSize: 11 }}
-                                >
-                                    {t('supersetCatalog.loadOverwrite')}
-                                </Button>
-                                <Button
-                                    size="small"
-                                    variant="outlined"
-                                    color="secondary"
-                                    onClick={() => {
-                                        setSuffixDialogDs(ds);
-                                        const d = new Date();
-                                        const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
-                                        setSuffixInput(ymd);
-                                        setSuffixDialogOpen(true);
-                                    }}
-                                    disabled={loadingDatasetId === ds.id}
-                                    startIcon={<AddIcon sx={{ fontSize: 16 }} />}
-                                    sx={{ textTransform: 'none', fontSize: 11 }}
-                                >
-                                    {t('supersetCatalog.createNewDataset')}
-                                </Button>
+                            <Box sx={{ display: 'flex', gap: 0.5, ml: 1, flexShrink: 0, alignSelf: 'center' }}>
+                                <Tooltip title={t('supersetCatalog.loadOverwrite')}>
+                                    <span>
+                                        <IconButton
+                                            size="small"
+                                            onClick={() => loadDataset(ds)}
+                                            disabled={loadingDatasetId === ds.id}
+                                        >
+                                            {loadingDatasetId === ds.id ? <CircularProgress size={14} /> : <DownloadIcon sx={{ fontSize: 16 }} />}
+                                        </IconButton>
+                                    </span>
+                                </Tooltip>
+                                <Tooltip title={t('supersetCatalog.createNewDataset')}>
+                                    <span>
+                                        <IconButton
+                                            size="small"
+                                            onClick={() => {
+                                                setSuffixDialogDs(ds);
+                                                const d = new Date();
+                                                const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+                                                setSuffixInput(ymd);
+                                                setSuffixDialogOpen(true);
+                                            }}
+                                            disabled={loadingDatasetId === ds.id}
+                                        >
+                                            <AddIcon sx={{ fontSize: 16 }} />
+                                        </IconButton>
+                                    </span>
+                                </Tooltip>
                             </Box>
                         </Box>
                     </Paper>

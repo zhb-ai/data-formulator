@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import re
 from typing import Any
 from urllib.parse import quote
 
@@ -147,6 +149,14 @@ class SupersetClient:
             sql_session.headers.update({"X-CSRFToken": csrf})
         return sql_session
 
+    @staticmethod
+    def _extract_jinja_params(sql: str) -> dict[str, str]:
+        """Find {{ var }} references in SQL and return default empty values."""
+        params: dict[str, str] = {}
+        for match in re.finditer(r"\{\{\s*(\w+)\s*\}\}", sql):
+            params.setdefault(match.group(1), "")
+        return params
+
     def execute_sql_with_session(
         self,
         sql_session: requests.Session,
@@ -156,16 +166,31 @@ class SupersetClient:
         row_limit: int = 100_000,
     ) -> dict:
         """Execute SQL via an existing session."""
+        body: dict[str, Any] = {
+            "database_id": database_id,
+            "sql": sql,
+            "schema": schema,
+            "runAsync": False,
+            "queryLimit": row_limit,
+        }
+        jinja_params = self._extract_jinja_params(sql)
+        if jinja_params:
+            body["templateParams"] = json.dumps(jinja_params)
+
         resp = sql_session.post(
             f"{self.base_url}/api/v1/sqllab/execute/",
-            json={
-                "database_id": database_id,
-                "sql": sql,
-                "schema": schema,
-                "runAsync": False,
-                "queryLimit": row_limit,
-            },
+            json=body,
             timeout=self.timeout,
         )
-        resp.raise_for_status()
+        if not resp.ok:
+            detail = ""
+            try:
+                payload = resp.json()
+                detail = payload.get("message") or payload.get("errors") or payload
+            except Exception:
+                detail = resp.text
+            raise requests.HTTPError(
+                f"{resp.status_code} Server Error for url: {resp.url} detail={detail}",
+                response=resp,
+            )
         return resp.json()

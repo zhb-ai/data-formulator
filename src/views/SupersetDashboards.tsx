@@ -5,7 +5,6 @@ import React, { FC, useState, useEffect, useCallback } from 'react';
 import {
     Box,
     Typography,
-    Button,
     TextField,
     CircularProgress,
     IconButton,
@@ -19,16 +18,11 @@ import {
     InputAdornment,
     LinearProgress,
     Collapse,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SearchIcon from '@mui/icons-material/Search';
 import DownloadIcon from '@mui/icons-material/Download';
-import AddIcon from '@mui/icons-material/Add';
 import TableRowsIcon from '@mui/icons-material/TableRows';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -160,9 +154,6 @@ export const SupersetDashboards: FC<SupersetDashboardsProps> = ({ onDatasetLoade
 
     const [loadingDatasetId, setLoadingDatasetId] = useState<number | null>(null);
 
-    const [suffixDialogOpen, setSuffixDialogOpen] = useState(false);
-    const [suffixDialogDs, setSuffixDialogDs] = useState<DashboardDataset | null>(null);
-    const [suffixInput, setSuffixInput] = useState('');
     const [filterDialogOpen, setFilterDialogOpen] = useState(false);
     const [filterDialogDashboard, setFilterDialogDashboard] = useState<Dashboard | null>(null);
     const [filterDialogDataset, setFilterDialogDataset] = useState<DashboardDataset | null>(null);
@@ -485,23 +476,6 @@ export const SupersetDashboards: FC<SupersetDashboardsProps> = ({ onDatasetLoade
                                                         </IconButton>
                                                     </span>
                                                 </Tooltip>
-                                                <Tooltip title={t('supersetCatalog.createNewDataset')}>
-                                                    <span>
-                                                        <IconButton
-                                                            size="small"
-                                                            onClick={() => {
-                                                                setSuffixDialogDs(ds);
-                                                                const d = new Date();
-                                                                const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
-                                                                setSuffixInput(ymd);
-                                                                setSuffixDialogOpen(true);
-                                                            }}
-                                                            disabled={loadingDatasetId === ds.id}
-                                                        >
-                                                            <AddIcon sx={{ fontSize: 16 }} />
-                                                        </IconButton>
-                                                    </span>
-                                                </Tooltip>
                                             </Box>
                                         </Box>
                                     ))}
@@ -511,85 +485,6 @@ export const SupersetDashboards: FC<SupersetDashboardsProps> = ({ onDatasetLoade
                     );
                 })}
             </Box>
-
-            {/* suffix dialog (same pattern as SupersetCatalog) */}
-            <Dialog
-                open={suffixDialogOpen}
-                onClose={() => setSuffixDialogOpen(false)}
-                maxWidth="xs"
-                fullWidth
-                PaperProps={{ sx: { borderRadius: 2 } }}
-            >
-                <DialogTitle sx={{ fontSize: 14, fontWeight: 600, pb: 0.5, pt: 2, px: 2.5 }}>
-                    {t('supersetCatalog.suffixDialogTitle')}
-                </DialogTitle>
-                <DialogContent sx={{ px: 2.5, pt: 1 }}>
-                    <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', fontSize: 12, lineHeight: 1.6 }}>
-                        {t('supersetCatalog.suffixDialogDesc', { name: suffixDialogDs?.name ?? '' })}
-                    </Typography>
-
-                    <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: 'text.secondary', fontWeight: 500 }}>
-                        {t('supersetCatalog.suffixPreview')}
-                    </Typography>
-                    <Box sx={{
-                        display: 'flex', alignItems: 'center', gap: 0,
-                        border: '1px solid', borderColor: 'divider', borderRadius: 1,
-                        overflow: 'hidden',
-                    }}>
-                        <Typography variant="body2" sx={{
-                            fontSize: 13, color: 'text.secondary', whiteSpace: 'nowrap',
-                            px: 1.5, py: 0.75, bgcolor: 'action.hover', borderRight: '1px solid', borderColor: 'divider',
-                        }}>
-                            {suffixDialogDs?.name ?? ''}_
-                        </Typography>
-                        <TextField
-                            autoFocus
-                            size="small"
-                            fullWidth
-                            variant="standard"
-                            placeholder={t('supersetCatalog.suffixPlaceholder')}
-                            value={suffixInput}
-                            onChange={(e) => setSuffixInput(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' && suffixInput.trim()) {
-                                    const tableName = `${suffixDialogDs!.name}_${suffixInput.trim()}`;
-                                    loadDataset(suffixDialogDs!, tableName);
-                                    setSuffixDialogOpen(false);
-                                }
-                            }}
-                            slotProps={{ input: { disableUnderline: true, sx: { fontSize: 13, px: 1, py: 0.75 } } }}
-                        />
-                    </Box>
-                    {suffixInput.trim() && (
-                        <Chip
-                            size="small"
-                            variant="outlined"
-                            color="primary"
-                            label={`${suffixDialogDs?.name}_${suffixInput.trim()}`}
-                            sx={{ mt: 1, fontSize: 12, height: 24 }}
-                        />
-                    )}
-                </DialogContent>
-                <DialogActions sx={{ px: 2.5, pb: 2, pt: 0.5 }}>
-                    <Button onClick={() => setSuffixDialogOpen(false)} size="small" sx={{ textTransform: 'none', fontSize: 12 }}>
-                        {t('supersetCatalog.cancel')}
-                    </Button>
-                    <Button
-                        variant="contained"
-                        size="small"
-                        disableElevation
-                        disabled={!suffixInput.trim()}
-                        onClick={() => {
-                            const tableName = `${suffixDialogDs!.name}_${suffixInput.trim()}`;
-                            loadDataset(suffixDialogDs!, tableName);
-                            setSuffixDialogOpen(false);
-                        }}
-                        sx={{ textTransform: 'none', fontSize: 12 }}
-                    >
-                        {t('supersetCatalog.confirmLoad')}
-                    </Button>
-                </DialogActions>
-            </Dialog>
 
             <SupersetDashboardFilterDialog
                 open={filterDialogOpen}

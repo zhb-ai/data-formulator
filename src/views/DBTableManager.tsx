@@ -729,18 +729,20 @@ export const DBManagerPane: React.FC<{
                     startIcon={<TableIcon />}
                     endIcon={isLoaded ? <CheckIcon sx={{ fontSize: 14, color: 'success.main' }} /> : null}
                 >
-                    <Typography 
-                        fontSize='inherit'
-                        sx={{
-                            flex: 1,
-                            minWidth: 0,
-                            textAlign: 'left', 
-                            textOverflow: 'ellipsis', 
-                            overflow: 'hidden', 
-                            whiteSpace: 'nowrap',
-                        }}>
-                        {t.name}
-                    </Typography>
+                    <Tooltip title={t.name} placement="right" enterDelay={400}>
+                        <Typography 
+                            fontSize='inherit'
+                            sx={{
+                                flex: 1,
+                                minWidth: 0,
+                                textAlign: 'left', 
+                                textOverflow: 'ellipsis', 
+                                overflow: 'hidden', 
+                                whiteSpace: 'nowrap',
+                            }}>
+                            {t.name}
+                        </Typography>
+                    </Tooltip>
                 </Button>
             );
         })}
@@ -831,18 +833,20 @@ export const DBManagerPane: React.FC<{
                                 }}
                                 startIcon={<ViewIcon />}
                             >
-                                <Typography 
-                                    fontSize='inherit'
-                                    sx={{
-                                        flex: 1,
-                                        minWidth: 0,
-                                        textAlign: 'left', 
-                                        textOverflow: 'ellipsis', 
-                                        overflow: 'hidden', 
-                                        whiteSpace: 'nowrap',
-                                    }}>
-                                    {t.name}
-                                </Typography>
+                                <Tooltip title={t.name} placement="right" enterDelay={400}>
+                                    <Typography 
+                                        fontSize='inherit'
+                                        sx={{
+                                            flex: 1,
+                                            minWidth: 0,
+                                            textAlign: 'left', 
+                                            textOverflow: 'ellipsis', 
+                                            overflow: 'hidden', 
+                                            whiteSpace: 'nowrap',
+                                        }}>
+                                        {t.name}
+                                    </Typography>
+                                </Tooltip>
                             </Button>
                             );
                         })}
