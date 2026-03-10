@@ -46,12 +46,12 @@ class SupersetCatalog:
             datasets.append(
                 {
                     "id": ds["id"],
-                    "name": ds.get("table_name", ""),
-                    "schema": ds.get("schema", ""),
-                    "database": (ds.get("database") or {}).get("database_name", ""),
-                    "description": ds.get("description", "") or "",
+                    "name": ds.get("table_name") or "",
+                    "schema": ds.get("schema") or "",
+                    "database": (ds.get("database") or {}).get("database_name", "") or "",
+                    "description": ds.get("description") or "",
                     "column_count": len(columns),
-                    "column_names": [c.get("column_name", "") for c in columns],
+                    "column_names": [c.get("column_name") or "" for c in columns],
                     "row_count": ds.get("row_count"),
                 }
             )
@@ -88,13 +88,13 @@ class SupersetCatalog:
             dashboards.append(
                 {
                     "id": db["id"],
-                    "title": db.get("dashboard_title", ""),
-                    "slug": db.get("slug", ""),
-                    "status": db.get("status", "published"),
-                    "url": db.get("url", ""),
-                    "changed_on_delta_humanized": db.get("changed_on_delta_humanized", ""),
+                    "title": db.get("dashboard_title") or "",
+                    "slug": db.get("slug") or "",
+                    "status": db.get("status") or "published",
+                    "url": db.get("url") or "",
+                    "changed_on_delta_humanized": db.get("changed_on_delta_humanized") or "",
                     "owners": [
-                        o.get("first_name", "") + " " + o.get("last_name", "")
+                        (o.get("first_name") or "") + " " + (o.get("last_name") or "")
                         for o in owners
                     ],
                 }
@@ -116,14 +116,14 @@ class SupersetCatalog:
             datasets.append(
                 {
                     "id": ds.get("id"),
-                    "name": ds.get("table_name", ds.get("name", "")),
-                    "schema": ds.get("schema", ""),
-                    "database": (ds.get("database") or {}).get("database_name", "")
+                    "name": ds.get("table_name") or ds.get("name") or "",
+                    "schema": ds.get("schema") or "",
+                    "database": ((ds.get("database") or {}).get("database_name", "")
                         if isinstance(ds.get("database"), dict)
-                        else ds.get("database_name", ""),
-                    "description": ds.get("description", "") or "",
+                        else ds.get("database_name") or "") or "",
+                    "description": ds.get("description") or "",
                     "column_count": len(columns),
-                    "column_names": [c.get("column_name", "") for c in columns],
+                    "column_names": [c.get("column_name") or "" for c in columns],
                     "row_count": ds.get("row_count"),
                 }
             )

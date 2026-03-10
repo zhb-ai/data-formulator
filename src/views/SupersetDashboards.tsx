@@ -284,9 +284,9 @@ export const SupersetDashboards: FC<SupersetDashboardsProps> = ({ onDatasetLoade
         if (!searchQuery) return true;
         const q = searchQuery.toLowerCase();
         return (
-            db.title.toLowerCase().includes(q) ||
-            db.slug.toLowerCase().includes(q) ||
-            db.owners.some(o => o.toLowerCase().includes(q))
+            (db.title ?? '').toLowerCase().includes(q) ||
+            (db.slug ?? '').toLowerCase().includes(q) ||
+            (db.owners ?? []).some(o => (o ?? '').toLowerCase().includes(q))
         );
     });
 

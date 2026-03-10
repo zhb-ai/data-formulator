@@ -219,11 +219,11 @@ export const SupersetCatalog: FC<SupersetCatalogProps> = ({ onDatasetLoaded }) =
         if (!searchQuery) return true;
         const q = searchQuery.toLowerCase();
         return (
-            ds.name.toLowerCase().includes(q) ||
-            ds.database.toLowerCase().includes(q) ||
-            ds.schema.toLowerCase().includes(q) ||
-            ds.description.toLowerCase().includes(q) ||
-            ds.column_names.some(c => c.toLowerCase().includes(q))
+            (ds.name ?? '').toLowerCase().includes(q) ||
+            (ds.database ?? '').toLowerCase().includes(q) ||
+            (ds.schema ?? '').toLowerCase().includes(q) ||
+            (ds.description ?? '').toLowerCase().includes(q) ||
+            (ds.column_names ?? []).some(c => (c ?? '').toLowerCase().includes(q))
         );
     });
 
