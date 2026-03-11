@@ -18,6 +18,8 @@ import {
     InputAdornment,
     LinearProgress,
     Collapse,
+    Select,
+    MenuItem,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -65,6 +67,7 @@ interface SupersetDashboardsProps {
 
 const MAX_COLUMN_DISPLAY = 60;
 const MAX_TOOLTIP_ROWS = 12;
+const ROW_LIMIT_OPTIONS = [20000, 50000, 100000, 200000, 500000];
 
 const ColumnChip: FC<{ columns: string[] }> = ({ columns }) => {
     const { t } = useTranslation();
@@ -153,6 +156,7 @@ export const SupersetDashboards: FC<SupersetDashboardsProps> = ({ onDatasetLoade
     const [datasetsLoading, setDatasetsLoading] = useState<number | null>(null);
 
     const [loadingDatasetId, setLoadingDatasetId] = useState<number | null>(null);
+    const [rowLimit, setRowLimit] = useState<number>(20000);
 
     const [filterDialogOpen, setFilterDialogOpen] = useState(false);
     const [filterDialogDashboard, setFilterDialogDashboard] = useState<Dashboard | null>(null);
@@ -240,7 +244,7 @@ export const SupersetDashboards: FC<SupersetDashboardsProps> = ({ onDatasetLoade
         try {
             const body: Record<string, any> = {
                 dataset_id: dataset.id,
-                row_limit: 20000,
+                row_limit: rowLimit,
             };
             if (tableNameOverride) body.table_name = tableNameOverride;
             if (filters.length > 0) body.filters = filters;
@@ -314,8 +318,8 @@ export const SupersetDashboards: FC<SupersetDashboardsProps> = ({ onDatasetLoade
 
             <Divider />
 
-            {/* search */}
-            <Box sx={{ px: 1.5, py: 1 }}>
+            {/* search + row limit */}
+            <Box sx={{ px: 1.5, py: 1, display: 'flex', gap: 1, alignItems: 'center' }}>
                 <TextField
                     size="small"
                     placeholder={t('supersetDashboard.searchPlaceholder', 'Search dashboards...')}
@@ -331,6 +335,20 @@ export const SupersetDashboards: FC<SupersetDashboardsProps> = ({ onDatasetLoade
                     }}
                     sx={{ '& .MuiOutlinedInput-root': { fontSize: 13 } }}
                 />
+                <Tooltip title={t('supersetCatalog.rowLimitTip')}>
+                    <Select
+                        size="small"
+                        value={rowLimit}
+                        onChange={(e) => setRowLimit(Number(e.target.value))}
+                        sx={{ fontSize: 12, minWidth: 90, '& .MuiSelect-select': { py: '6px' } }}
+                    >
+                        {ROW_LIMIT_OPTIONS.map((val) => (
+                            <MenuItem key={val} value={val} sx={{ fontSize: 12 }}>
+                                {val.toLocaleString()}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </Tooltip>
             </Box>
 
             {/* alerts */}

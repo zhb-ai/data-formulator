@@ -7,5 +7,9 @@
             "envManager": "ms-python.python:conda",
             "packageManager": "ms-python.python:conda"
         }
+    ],
+    "i18n-ally.localesPaths": [
+        "src/i18n",
+        "src/i18n/locales"
     ]
 }

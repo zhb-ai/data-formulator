@@ -366,6 +366,7 @@
     "suffixPlaceholder": "Enter suffix",
     "suffixPreview": "Final table name",
     "cancel": "Cancel",
-    "confirmLoad": "Confirm & Load"
+    "confirmLoad": "Confirm & Load",
+    "rowLimitTip": "Max rows to load"
   }
 }

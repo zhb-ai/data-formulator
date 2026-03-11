@@ -332,6 +332,7 @@
     "suffixPlaceholder": "输入后缀",
     "suffixPreview": "最终表名",
     "cancel": "取消",
-    "confirmLoad": "确认加载"
+    "confirmLoad": "确认加载",
+    "rowLimitTip": "最大加载行数"
   }
 }
