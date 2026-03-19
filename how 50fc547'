@@ -1,0 +1,40 @@
+[33m50fc547[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m feat(国际化): 添加行数限制选项并更新国际化配置
+[33mfe5e9d8[m feat(superset): 支持仪表盘按条件加载数据
+[33m82b6658[m feat(superset): 添加仪表盘筛选条件加载功能
+[33m32f7379[m fix: 修复空值处理导致的搜索功能异常
+[33m0ac3608[m fix: 修复SupersetPanel中标签页和内容不匹配的问题
+[33m652fe73[m feat(工具提示): 优化工具提示布局并增加最大行数限制
+[33md4d0093[m feat(仪表盘): 添加列名显示组件并优化布局
+[33mb8ab797[m feat(Superset): 添加仪表盘浏览功能及数据集加载支持
+[33m5f0bec9[m fix(数据渲染): 修复Excel日期类型导致React渲染崩溃的问题
+[33m83063af[m docs: 添加0.6修改记录和升级计划文档
+[33m304dea8[m Merge pull request #1 from pinsisong/main
+[33m722c442[m sso登录
+[33m7dd37de[m feat(auth): 添加SSO单点登录支持
+[33mc9ea063[m fix(superset): 改进 token 过期处理和错误响应
+[33mbe1710c[m style(ReportView): 将执行摘要的字体从衬线体改为系统字体
+[33mde2b668[m fix(auth): 修复刷新令牌时使用错误的请求头格式
+[33meb431ca[m feat: 添加日志级别配置并优化模型检查逻辑
+[33md84f13c[m Merge branch 'main' of https://github.com/zhb-ai/data-formulator
+[33m27bc23d[m feat(集成): 添加Superset集成功能
+[33m8681168[m Update api-keys-example.env with additional comments
+[33m564e326[m Update api-keys-example.env with configuration comments
+[33m39749b7[m fix: 在JSON序列化时添加ensure_ascii=False参数
+[33m82cbe2f[m feat(报告生成): 支持多语言和自定义规则
+[33m10a8317[m feat(i18n): 添加报告模块的多语言支持
+[33mca4d251[m fix: 修复模型选择和样式问题
+[33m1f1fcfa[m[33m ([m[1;31morigin/dev[m[33m)[m docs: 补充数据库和会话导入导出的说明文档
+[33m69086d6[m feat(表格): 添加列类型修改功能并优化表格显示
+[33mf9d6e5d[m feat: 重构模型管理系统，支持服务端全局模型配置
+[33m05758b9[m chore: 删除api-keys.env文件
+[33mc2c7997[m chore: 更新.gitignore并添加API密钥配置文件
+[33m70e56a9[m feat(模型兼容): 添加对纯文本模型的图像输入检测与处理
+[33m8441438[m feat(i18n): 添加图表模板名称和分组的国际化支持
+[33m18c9f60[m fix: 修复跨域请求时CORS问题，移除未使用的国际化代码
+[33ma8693c3[m docs: 添加CMD版本的运行说明到README文档
+[33m332cfb4[m feat(i18n): 添加新的国际化文本并更新相关组件
+[33m4f41c04[m refactor(MessageSnackbar): 优化消息提示组件样式和逻辑
+[33m14ce30b[m feat(i18n): 添加多语言支持，实现中英文国际化
+[33me7b85e8[m docs: 添加非 Docker 环境下运行 DF 的详细指南
+[33mc1abb77[m feat(数据代理): 增强SQL代理对非ASCII标识符的支持并改进错误处理
+[33m488efc1[m feat(表格路由): 添加表格追加和流式摄入功能
