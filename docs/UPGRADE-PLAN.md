@@ -2,7 +2,7 @@
 
 ## 从 DF 0.6 Fork → DF 0.7 官方基准 + 模块化自定义功能
 
-> 策略核心：以 DF 0.7 官方代码为基准，将 0.6 中的自定义功能以**最低侵入性**方式重新整合，建立可持续的上游同步机制。
+> 策略核心：以 DF 0.7 官方代码为基准，将 0.6 中的自定义功能以**模块化、可维护、可审查**的方式重新整合，在必要处接受有限显式改动，建立可持续的上游同步机制。
 
 ---
 
@@ -23,7 +23,7 @@ your-org/data-formulator (origin)
     ├── main ← 始终跟踪 upstream/main
     ├── custom/release ← 你的发行版（main + 所有 feature 分支合并）
     │
-    ├── feature/i18n-vite-plugin ← i18n（Vite 构建时翻译插件）
+    ├── feature/i18n-react-i18next ← i18n（显式运行时国际化）
     ├── feature/superset-integration ← Superset 后端集成
     ├── feature/security ← 安全模块
     ├── feature/auth-sso ← 登录/SSO + SupersetCatalog
@@ -39,7 +39,7 @@ your-org/data-formulator (origin)
 1. **每个自定义功能一个独立 feature 分支**，方便单独维护和合并
 2. **核心文件修改不超过 5 行**（app.py、vite.config.ts 等）
 3. **自定义代码集中在独立目录**，不散落在官方代码中
-4. **i18n 完全零侵入**，通过 Vite 构建插件实现
+4. **i18n 优先可维护性**，允许在 UI 层做有限显式改动，不对源码做黑盒构建期替换
 5. **每次上游更新**：fetch upstream → merge 到 main → 逐个 rebase feature 分支 → 合并到 release
 
 ---
@@ -71,107 +71,233 @@ git push -u origin main
 
 ## 三、功能模块升级计划
 
-### Phase 1：i18n 国际化（Vite 插件方式）
+### Phase 1：i18n 国际化（显式运行时方案）
 
-**侵入性：极低（仅修改 1 个配置文件 + 新增独立目录）**
+**侵入性：中等（会修改若干 UI 文件，但可维护性、可审查性明显优于构建期黑盒替换）**
 
-#### 0.6 中的问题
-- 使用 `react-i18next`，需要在每个组件中 `import { useTranslation }` 并调用 `t()`
-- 修改了几十个 view 文件，导致每次上游更新都有大量冲突
-- 需要安装 3 个 npm 依赖：`i18next`, `react-i18next`, `i18next-browser-languagedetector`
+#### 为什么调整方案
 
-#### 0.7 新方案：Vite 构建时翻译插件
+0.6 阶段为了减少冲突，曾考虑过“尽量少改源码”的思路；但在 0.7 中，前端功能面更大，字符串类型也更复杂，继续使用 Vite 构建期 AST/字符串替换会带来以下问题：
 
-**原理**：在 Vite 构建过程中，通过 AST 解析 TSX/JSX 文件，将匹配的英文字符串自动替换为目标语言。翻译只发生在内存中，**不修改任何源文件**。
+- 很难稳定区分“用户可见文案”与“内部语义字符串 / 图表模板 / 测试数据 / prompt”
+- 对 `title`、`label`、`helperText`、`aria-label`、模板字符串、运行时消息等场景的覆盖容易失真
+- 构建期魔法不利于 code review，也不利于未来向上游提交
+- 0.7 已经有更多新增页面与交互，后续维护成本会从“少改源码”转移为“难排查替换副作用”
 
-#### 需要创建的文件
+因此，0.7 的 i18n 迁移改为：**保留 `react-i18next` 这种显式运行时国际化方案，但只在 UI 层做有边界的改动，不再追求“完全零侵入”。**
+
+#### 目标
+
+1. 复用 0.6 已有的翻译资源和 key 体系
+2. 在 0.7 `dev` 基础上重新接线 `i18n` 基础设施
+3. 优先覆盖用户直接可见的页面、菜单、对话框、提示消息
+4. 明确区分“可翻译 UI 文案”和“不能随便翻译的内部字符串”
+5. 让后续升级到 0.8/0.9 时，冲突集中在少量 UI 文件，而不是隐藏在构建插件里
+
+#### 推荐 Git 分支
+
+`feature/i18n-react-i18next`
+
+#### 方案总览
+
+采用运行时国际化：
+
+- 保留 `src/i18n/` 目录，作为独立翻译模块
+- 使用 `i18next + react-i18next + i18next-browser-languagedetector`
+- 在 `src/index.tsx` 中显式初始化 `i18n`
+- 在需要翻译的组件中显式调用 `useTranslation()` / `t()`
+- 翻译范围限定为 UI 展示层，不对算法、模板、测试、语义标签做自动替换
+
+#### 需要保留 / 创建的文件
 
 ```
 src/
-└── i18n/                              # 翻译模块（独立目录）
-    ├── vite-plugin-i18n.ts            # Vite 翻译插件
-    ├── translate.ts                   # 翻译核心逻辑
-    ├── extract-strings.ts             # 字符串提取工具（辅助开发）
+└── i18n/
+    ├── index.ts                        # i18n 初始化入口
     └── locales/
-        ├── zh.json                    # 中文翻译字典（扁平化 key-value）
-        └── ... (其他语言)
+        ├── index.ts                    # 语言聚合导出
+        ├── en/
+        │   ├── index.ts
+        │   ├── common.json
+        │   ├── navigation.json
+        │   ├── messages.json
+        │   └── ...
+        └── zh/
+            ├── index.ts
+            ├── common.json
+            ├── navigation.json
+            ├── messages.json
+            └── ...
 ```
 
-#### 需要修改的文件
+> 说明：沿用 0.6 的多文件分组方式更适合人工维护和 code review，不建议在 0.7 阶段强行压成单一大字典。
 
-| 文件 | 修改内容 | 行数 |
+#### 需要修改的关键文件
+
+| 文件 | 修改内容 | 说明 |
 |------|---------|------|
-| `vite.config.ts` | 添加 1 行 import + 1 行 plugin 注册 | +2 行 |
-| `package.json` | 无需额外依赖（Vite 插件用原生 AST 或已有的 SWC） | 0 行 |
-
-#### 翻译字典格式
-
-将 0.6 中分散的 7 个 JSON 文件合并为一个扁平字典。格式：
-
-```json
-{
-  "Data Formulator": "Data Formulator",
-  "Loading...": "加载中...",
-  "Upload": "上传",
-  "Save": "保存",
-  "Explore data with visualizations, powered by AI agents.": "用 AI Agent 驱动可视化探索数据。",
-  ...
-}
-```
-
-> key = 源码中的英文原文，value = 目标语言翻译
-
-#### 插件工作方式
-
-```
-源文件 (.tsx)          Vite transform()            输出 (内存中)
-─────────────         ──────────────────          ────────────────
->Upload Data<    →    匹配字典 "Upload Data"  →   >上传数据<
-label="Settings" →    匹配字典 "Settings"     →   label="设置"
-title="Help"     →    匹配字典 "Help"         →   title="帮助"
-```
+| `package.json` | 增加 `i18next`、`react-i18next`、`i18next-browser-languagedetector` | 0.7 当前默认未接入这些依赖 |
+| `src/index.tsx` | 增加 `import './i18n'` | 在应用启动时初始化国际化 |
+| `src/i18n/index.ts` | 检查初始化逻辑 | fallback 语言、检测顺序、缓存策略 |
+| `src/app/App.tsx` | 首批接入 `t()` | 菜单、按钮、弹窗、Tooltip、Snackbar 相关文案 |
+| `src/views/DataFormulator.tsx` | 首批接入 `t()` | 首页、空状态、入口提示文案 |
+| `src/views/About.tsx` | 首批接入 `t()` | About 页面静态文案 |
+| `src/views/ChartGallery.tsx` | 第二批接入 | 新增页面，需补充 0.7 文案 |
+| `src/views/UnifiedDataUploadDialog.tsx` | 第二批接入 | 数据导入/上传流程文案 |
+| `src/views/ModelSelectionDialog.tsx` | 第二批接入 | 模型选择、状态提示 |
+| `src/views/MessageSnackbar.tsx` | 第二批接入 | 统一消息展示 |
 
 #### 实施步骤
 
-1. 从 0.6 的 `en/*.json` + `zh/*.json` 生成扁平化翻译字典
-2. 编写 Vite 插件（优先简单字符串匹配版，后续可升级为 AST 版）
-3. 在 `vite.config.ts` 中注册插件
-4. 通过环境变量 `VITE_LANG=zh` 控制是否启用翻译
-5. 验证构建产物中的翻译效果
+##### Step 1：接通基础设施
 
-#### 语言切换方式
+1. 确认 `src/i18n/` 已复制到 0.7 仓库
+2. 在 `package.json` 中补齐依赖：
+   - `i18next`
+   - `react-i18next`
+   - `i18next-browser-languagedetector`
+3. 在 `src/index.tsx` 中增加 `import './i18n'`
+4. 检查 `src/i18n/index.ts`：
+   - `fallbackLng` 设为 `en`
+   - 检测顺序优先 `localStorage`，其次 `navigator`
+   - 缓存到 `localStorage`
+5. 先确保“不翻译任何业务页面时，项目也能正常启动”
 
-- **构建时切换**：`VITE_LANG=zh npm run build` → 生成中文版
-- **运行时切换**（可选增强）：构建时将所有语言字典打包，前端 JS 运行时动态替换
+##### Step 2：迁移 0.6 现有字典
 
-#### 0.6 → 0.7 翻译字典迁移
+1. 保留 0.6 中已有的 7 组 JSON：
+   - `common`
+   - `chart`
+   - `encoding`
+   - `messages`
+   - `model`
+   - `navigation`
+   - `upload`
+2. 先不要改 key 结构，优先保证可复用
+3. 如果 0.7 某些页面结构已变化，新增条目直接补入最接近的 namespace
+4. 对 0.6 中已经不再使用的条目，先保留，不急于删除
 
-0.6 中有 7 个分类 JSON 文件（common, chart, encoding, messages, model, navigation, upload），
-需要提取其中的**英文原文**作为字典 key，对应的中文作为 value。
+##### Step 3：先做“壳层 UI”国际化
 
-可用脚本自动完成：
-```js
-// 伪代码：将嵌套 JSON 转为扁平 key-value
-// { "app": { "save": "Save" } } → 提取 value "Save"
-// 然后在中文 JSON 中找对应路径 → { "Save": "保存" }
-```
+优先修改以下文件：
 
-#### 处理 0.7 新增字符串
+- `src/app/App.tsx`
+- `src/views/DataFormulator.tsx`
+- `src/views/About.tsx`
+- `src/views/ChartGallery.tsx`
+- `src/views/UnifiedDataUploadDialog.tsx`
+- `src/views/ModelSelectionDialog.tsx`
+- `src/views/MessageSnackbar.tsx`
 
-0.7 新增了以下组件/视图，需要补充翻译：
+这一阶段只处理：
 
-| 新组件 | 预估新增字符串数 |
-|--------|----------------|
-| `ChartGallery.tsx` | ~10-15 |
-| `ChartRenderService.tsx` | ~5 |
-| `SimpleChartRecBox.tsx` | ~5-10 |
-| `ChatThreadView.tsx` | ~10-15 |
-| `DataThreadCards.tsx` | ~10 |
-| `ChartGallery` 相关 | ~10 |
-| `tokens.ts` (调色板名称) | ~5 |
-| 工作区保存/加载相关 UI | ~10-15 |
+- 按钮文字
+- 菜单文字
+- 对话框标题
+- 表单 `label` / `helperText`
+- Tooltip
+- 空状态文案
+- 页面标题、导航入口
+- 用户可见的成功 / 失败 / 提示消息
 
-**合计预估**：60-80 个新增翻译条目
+##### Step 4：再处理交互层与消息层
+
+第二批再考虑：
+
+- `src/views/VisualizationView.tsx`
+- `src/views/DataView.tsx`
+- `src/views/ReportView.tsx`
+- `src/views/RefreshDataDialog.tsx`
+- `src/views/TableSelectionView.tsx`
+- `src/views/SelectableDataGrid.tsx`
+- `src/views/ChatDialog.tsx`
+- `src/views/ChatThreadView.tsx`
+
+原则是：**先翻“页面外壳”和“高频交互”，再翻深层业务界面。**
+
+##### Step 5：补齐 0.7 新增文案
+
+0.7 相比 0.6 新增或强化的模块，需要单独补翻译：
+
+| 新增 / 变化区域 | 说明 |
+|----------------|------|
+| `ChartGallery.tsx` | 图表画廊入口、分类、提示文案 |
+| `ChartRenderService.tsx` | 渲染服务提示、运行状态文案 |
+| `SimpleChartRecBox.tsx` | 图表推荐相关提示 |
+| `ChatThreadView.tsx` | 聊天线程与多轮交互文案 |
+| `DataThreadCards.tsx` | 数据线程卡片、操作提示 |
+| 会话保存/加载相关 UI | `Save Session`、`Load Session`、导入导出相关 |
+| 配置面板相关 UI | 颜色主题、默认宽高、超时等配置说明 |
+
+#### 明确“不翻译”的范围
+
+以下内容在 Phase 1 中**不要直接改动**：
+
+- `src/lib/agents-chart/**`
+- 图表模板名、内部枚举值、语义类型、字段语义推断相关字符串
+- 测试数据、测试断言、示例 spec
+- 发送给后端或模型的 prompt / payload / 结构化字段
+- reducer/state 中作为逻辑判断依据的固定英文值
+
+原因：这些字符串很多不是单纯 UI 文案，翻译后可能改变程序行为。
+
+#### 代码层注意事项
+
+1. **只翻 UI，不翻逻辑值**
+   - 可以翻译按钮显示文本
+   - 不要翻译作为 key、type、status、enum 的英文值
+
+2. **模板字符串优先改成带参数的翻译**
+   - 例如：`t('session.saved', { name: sessionName })`
+   - 不要继续大量保留 `` `Session "${name}" saved` `` 这种散落文案
+
+3. **先显式、后抽象**
+   - 初期允许直接在页面里 `const { t } = useTranslation()`
+   - 不要一开始就设计复杂中间层，避免增加理解成本
+
+4. **分 namespace 管理**
+   - 公共按钮放 `common`
+   - 导航放 `navigation`
+   - 消息提示放 `messages`
+   - 上传流程放 `upload`
+   - 模型相关放 `model`
+
+5. **保持英文原文可回溯**
+   - 新增翻译条目时，命名要能看出来源
+   - 避免为了“简短”把 key 设计成难以理解的缩写
+
+#### 迁移顺序建议
+
+建议按以下节奏推进：
+
+1. 接通依赖与初始化
+2. 让 `App.tsx` / `DataFormulator.tsx` 跑通
+3. 统一处理会话、配置、导航这类壳层文案
+4. 再处理上传、模型、图库、聊天等子模块
+5. 最后回头清理未使用 key、重复翻译、命名不一致问题
+
+#### 验收标准
+
+完成 Phase 1 后，应满足：
+
+- 应用正常启动，切换语言不报错
+- 主页、菜单、对话框、Tooltip、常见消息已具备中英文切换能力
+- 不因翻译导致图表生成、数据处理、模型调用行为变化
+- `i18n` 改动集中在前端 UI 文件与 `src/i18n/`，不侵入图表内核与测试模块
+- 后续 rebase 时，冲突主要发生在新增/修改过的 UI 文件，而不是隐藏在构建脚本中
+
+#### 风险与控制
+
+| 风险 | 表现 | 控制方式 |
+|------|------|----------|
+| 改动文件数增多 | rebase 时 UI 层冲突增多 | 按页面分批提交，保持每批改动小而清晰 |
+| 文案与逻辑值混淆 | 翻译后行为异常 | 明确“只翻 UI 文案”的边界 |
+| 0.7 新功能文案遗漏 | 页面局部仍显示英文 | 以页面为单位做人工走查 |
+| message 文案分散 | 同类提示出现不同表述 | 后续视需要抽 `messages` 统一 key |
+
+#### 补充说明
+
+与 0.6 相比，这一方案的源码改动确实更多；但它更适合当前你已经加入项目、并准备基于 `dev` 长期演进的场景。对于 0.7 以后版本，**“显式、可审查、边界清晰”比“绝对低侵入”更重要。**
 
 ---
 
@@ -821,7 +947,7 @@ def stream_ingest():
 | 阶段 | 任务 | 预估时间 | 依赖 | Git 分支 |
 |------|------|---------|------|---------|
 | **Phase 0** | Git 仓库初始化 + upstream 追踪 | 0.5h | 无 | `main` |
-| **Phase 1** | i18n Vite 插件 + 翻译字典迁移 | 2-3 天 | Phase 0 | `feature/i18n-vite-plugin` |
+| **Phase 1** | i18n 运行时接线 + UI 文案迁移 | 2-4 天 | Phase 0 | `feature/i18n-react-i18next` |
 | **Phase 2** | Superset 后端集成 + 扩展注入点 | 1-2 天 | Phase 0 | `feature/superset-integration` |
 | **Phase 3** | 安全模块迁移 | 0.5 天 | Phase 0 | `feature/security` |
 | **Phase 4** | 登录/SSO + authSlice | 1-2 天 | Phase 2 | `feature/auth-sso` |
@@ -847,9 +973,9 @@ git checkout main
 git merge upstream/main   # 或对应的 tag
 
 # 2. 逐个 rebase feature 分支（按优先级排序）
-git checkout feature/i18n-vite-plugin
+git checkout feature/i18n-react-i18next
 git rebase main
-# 冲突概率：极低（仅 vite.config.ts 1-2 行）
+# 冲突概率：中（主要集中在 UI 文件）
 
 git checkout feature/superset-integration
 git rebase main
@@ -882,7 +1008,7 @@ git rebase main
 # 3. 重新构建 release 分支
 git checkout custom/release
 git reset --hard main
-git merge feature/i18n-vite-plugin
+git merge feature/i18n-react-i18next
 git merge feature/superset-integration
 git merge feature/model-management
 git merge feature/agent-cjk-compat
